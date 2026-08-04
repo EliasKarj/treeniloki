@@ -16,6 +16,16 @@
     return ACTIVITY_NAMES[activityId] || `act${activityId}`;
   }
 
+  function formatDate(msEpoch) {
+    const d = new Date(msEpoch);
+    const p = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  }
+
+  function buildFilename(workout) {
+    return `${formatDate(workout.startTime)}_${activityName(workout.activityId)}_${workout.workoutKey}.gpx`;
+  }
+
   // ---- browser entry + Node test hook (added in later tasks) ----
-  try { module.exports = { activityName }; } catch (e) { /* browser: no module */ }
+  try { module.exports = { activityName, formatDate, buildFilename }; } catch (e) { /* browser: no module */ }
 })();
