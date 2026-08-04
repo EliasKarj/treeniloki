@@ -1,6 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { activityName, formatDate, buildFilename, listAllWorkouts } = require("./sports-tracker-export.js");
+const { activityName, formatDate, buildFilename, listAllWorkouts, fetchGpx } = require("./sports-tracker-export.js");
 
 test("activityName maps known ids and falls back to act<id>", () => {
   assert.equal(activityName(1), "running");
@@ -34,4 +34,15 @@ test("listAllWorkouts pages until a short page and collects all", async () => {
 test("listAllWorkouts throws on a non-ok response", async () => {
   const fakeFetch = async () => ({ ok: false, status: 403 });
   await assert.rejects(() => listAllWorkouts(fakeFetch, {}), /403/);
+});
+
+test("fetchGpx returns the GPX text when it has trackpoints", async () => {
+  const fakeFetch = async () => ({ ok: true, text: async () => "<gpx><trkpt lat=\"1\" lon=\"2\"/></gpx>" });
+  const gpx = await fetchGpx("abc", fakeFetch, {});
+  assert.match(gpx, /<trkpt/);
+});
+
+test("fetchGpx returns null for non-ok or track-less GPX", async () => {
+  assert.equal(await fetchGpx("x", async () => ({ ok: false, status: 404 }), {}), null);
+  assert.equal(await fetchGpx("y", async () => ({ ok: true, text: async () => "<gpx></gpx>" }), {}), null);
 });

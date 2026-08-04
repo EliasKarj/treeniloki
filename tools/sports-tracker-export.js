@@ -39,6 +39,13 @@
     return all;
   }
 
+  async function fetchGpx(workoutKey, fetchImpl, headers) {
+    const res = await fetchImpl(`${API}/workout/exportGpx/${workoutKey}`, { headers, credentials: "include" });
+    if (!res.ok) return null;
+    const text = await res.text();
+    return text.includes("<trkpt") ? text : null;
+  }
+
   // ---- browser entry + Node test hook (added in later tasks) ----
-  try { module.exports = { activityName, formatDate, buildFilename, listAllWorkouts }; } catch (e) { /* browser: no module */ }
+  try { module.exports = { activityName, formatDate, buildFilename, listAllWorkouts, fetchGpx }; } catch (e) { /* browser: no module */ }
 })();
