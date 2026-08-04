@@ -1,0 +1,9 @@
+{
+  "name": "treeniloki",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sports Tracker export + GPX workout analyzer (client-side).",
+  "scripts": {
+    "test": "node --test tools/sports-tracker-export.test.js"
+  }
+}
