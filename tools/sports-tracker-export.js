@@ -46,6 +46,76 @@
     return text.includes("<trkpt") ? text : null;
   }
 
-  // ---- browser entry + Node test hook (added in later tasks) ----
+  function authHeaders() {
+    const key = typeof localStorage !== "undefined" && localStorage.getItem("sessionkey");
+    if (!key) throw new Error("Ei sessionkeytä — kirjaudu sisään sports-tracker.comiin ja aja uudelleen.");
+    return { STTAuthorization: key };
+  }
+
+  function loadJSZip() {
+    if (window.JSZip) return Promise.resolve(window.JSZip);
+    return new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = JSZIP_CDN;
+      s.onload = () => resolve(window.JSZip);
+      s.onerror = () => reject(new Error("JSZip-lataus epäonnistui"));
+      document.head.appendChild(s);
+    });
+  }
+
+  function triggerDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  async function run() {
+    const headers = authHeaders();
+    console.log("Haetaan treenilista…");
+    const workouts = await listAllWorkouts(fetch, headers);
+    console.log(`Löytyi ${workouts.length} treeniä. Ladataan GPX:t…`);
+
+    const files = [];
+    const byActivity = {};
+    let skipped = 0;
+    for (let i = 0; i < workouts.length; i++) {
+      const w = workouts[i];
+      byActivity[w.activityId] = (byActivity[w.activityId] || 0) + 1;
+      const gpx = await fetchGpx(w.workoutKey, fetch, headers);
+      if (gpx) files.push({ name: buildFilename(w), gpx });
+      else skipped++;
+      console.log(`${i + 1} / ${workouts.length}${gpx ? "" : "  (ohitettu — ei reittiä)"}`);
+      await sleep(THROTTLE_MS);
+    }
+
+    const dateTag = formatDate(Date.now());
+    try {
+      const JSZip = await loadJSZip();
+      const zip = new JSZip();
+      for (const f of files) zip.file(f.name, f.gpx);
+      const blob = await zip.generateAsync({ type: "blob" });
+      triggerDownload(blob, `sports-tracker-export-${dateTag}.zip`);
+      console.log(`✅ Valmis: ${files.length} GPX zipissä, ${skipped} ohitettu.`);
+    } catch (e) {
+      console.warn("JSZip ei latautunut — ladataan tiedostot yksittäin.", e);
+      for (const f of files) {
+        triggerDownload(new Blob([f.gpx], { type: "application/gpx+xml" }), f.name);
+        await sleep(120);
+      }
+      console.log(`✅ Valmis (yksittäiset tiedostot): ${files.length} GPX, ${skipped} ohitettu.`);
+    }
+    console.log("Treenit lajeittain (activityId → määrä):", byActivity);
+  }
+
+  if (typeof window !== "undefined") run();
+
+  // ---- Node test hook (ignored in the browser) ----
   try { module.exports = { activityName, formatDate, buildFilename, listAllWorkouts, fetchGpx }; } catch (e) { /* browser: no module */ }
 })();
