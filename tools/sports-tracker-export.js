@@ -26,6 +26,19 @@
     return `${formatDate(workout.startTime)}_${activityName(workout.activityId)}_${workout.workoutKey}.gpx`;
   }
 
+  async function listAllWorkouts(fetchImpl, headers) {
+    const all = [];
+    for (let offset = 0; ; offset += PAGE_LIMIT) {
+      const res = await fetchImpl(`${API}/workouts?sortonst=true&limit=${PAGE_LIMIT}&offset=${offset}`, { headers, credentials: "include" });
+      if (!res.ok) throw new Error(`Workout-listaus epäonnistui (HTTP ${res.status}).`);
+      const json = await res.json();
+      const page = (json && json.payload) || [];
+      all.push(...page);
+      if (page.length < PAGE_LIMIT) break;
+    }
+    return all;
+  }
+
   // ---- browser entry + Node test hook (added in later tasks) ----
-  try { module.exports = { activityName, formatDate, buildFilename }; } catch (e) { /* browser: no module */ }
+  try { module.exports = { activityName, formatDate, buildFilename, listAllWorkouts }; } catch (e) { /* browser: no module */ }
 })();
