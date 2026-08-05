@@ -1,0 +1,35 @@
+:root {
+  --bg:#0a0f14; --panel:#0e151d; --line:#1c2732; --fg:#dbe6ef; --muted:#5f7183; --accent:#35d0e0; --warn:#e8a24a;
+  --mono:'Space Mono', ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; color: var(--fg); font-family: 'Inter', system-ui, sans-serif;
+  background: repeating-radial-gradient(circle at 85% -10%, rgba(53,208,224,.045) 0 1px, transparent 1px 16px), var(--bg);
+  min-height: 100dvh;
+}
+#app { max-width: 1100px; margin: 0 auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.hd { display: flex; justify-content: space-between; align-items: baseline; }
+.brand { font-weight: 800; letter-spacing: .04em; } .brand b { color: var(--accent); }
+.lbl { font-size: 10px; letter-spacing: .11em; text-transform: uppercase; color: var(--muted); }
+.num { font-family: var(--mono); font-weight: 700; }
+.warn { color: var(--warn); } .good { color: var(--accent); }
+.drop { border: 1px dashed #35506a; border-radius: 10px; padding: 14px; text-align: center; color: var(--muted); font-size: 13px; }
+.drop.over { border-color: var(--accent); color: var(--fg); }
+.pick { color: var(--accent); text-decoration: underline; cursor: pointer; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.gauges { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.g { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.g .v { font-size: 18px; } .g .v .u { font-size: 10px; color: var(--muted); }
+.cards3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.ins { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 11px; display: flex; flex-direction: column; gap: 6px; }
+.ins .h { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.ins .big { font-family: var(--mono); font-weight: 700; font-size: 16px; }
+.ins .sub { font-size: 11px; color: #8fa0b3; line-height: 1.5; }
+.pill { align-self: flex-start; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 20px; }
+.two { display: grid; grid-template-columns: 1.1fr 1fr; gap: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th, td { text-align: left; padding: 6px; border-bottom: 1px solid #172029; }
+th { color: var(--muted); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+canvas { width: 100%; display: block; }
+@media (max-width: 720px) { .gauges { grid-template-columns: repeat(3,1fr);} .cards3, .two { grid-template-columns: 1fr; } }
