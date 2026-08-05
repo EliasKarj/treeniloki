@@ -5,6 +5,8 @@ import { splitBlocks, slopePerDay, comeback, activeFrequencyPerWeek } from "../s
 import { spikeRisk } from "../src/analysis/spikeRisk.mjs";
 import { acwr } from "../src/analysis/trainingLoad.mjs";
 import { detrainingNote } from "../src/analysis/detraining.mjs";
+import { renderGauges } from "./render/gauges.mjs";
+import { renderTable } from "./render/table.mjs";
 
 let workouts = [];
 
@@ -40,9 +42,9 @@ async function addFiles(fileList) {
 }
 
 function render(model) {
-  // Replaced by real renderers in Tasks 9–10.
-  console.log("model", model);
   document.getElementById("hd-meta").textContent = `${model.agg.count} treeniä`;
+  renderGauges(document.getElementById("summary"), model);
+  renderTable(document.getElementById("table"), model);
 }
 
 const drop = document.getElementById("drop");
