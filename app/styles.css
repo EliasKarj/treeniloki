@@ -30,7 +30,6 @@ body {
 .gauges { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
 .g { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
 .g .v { font-size: 18px; } .g .v .u { font-size: 10px; color: var(--muted); }
-.cards3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .ins { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 11px; display: flex; flex-direction: column; gap: 6px; }
 .ins .h { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 .ins .big { font-family: var(--mono); font-weight: 700; font-size: 16px; }
@@ -42,12 +41,6 @@ th, td { text-align: left; padding: 6px; border-bottom: 1px solid #172029; }
 th { color: var(--muted); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
 canvas { width: 100%; display: block; }
 @media (max-width: 720px) { .gauges { grid-template-columns: repeat(3,1fr);} .cards3, .two { grid-template-columns: 1fr; } }
-.deep { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); padding: 0 12px; }
-.deep > summary { cursor: pointer; padding: 11px 0; color: var(--accent); font-weight: 600; list-style: none; }
-.deep > summary::-webkit-details-marker { display: none; }
-.deep > summary::before { content: "▸ "; color: var(--muted); }
-.deep[open] > summary::before { content: "▾ "; }
-#deep-body { display: flex; flex-direction: column; gap: 12px; padding: 4px 0 12px; }
 .goals { display: flex; gap: 6px; flex-wrap: wrap; }
 .goals button { background: #0d141c; color: var(--muted); border: 1px solid var(--line); border-radius: 20px; padding: 5px 12px; font: inherit; font-size: 12px; cursor: pointer; }
 .goals button.on { color: var(--bg); background: var(--accent); border-color: var(--accent); font-weight: 700; }
@@ -62,3 +55,30 @@ canvas { width: 100%; display: block; }
 .zbar { display: flex; height: 16px; border-radius: 5px; overflow: hidden; }
 .zbar .zseg.z1 { background: #2a6b74; } .zbar .zseg.z2 { background: #35d0e0; } .zbar .zseg.z3 { background: #7fd97f; } .zbar .zseg.z4 { background: var(--warn); } .zbar .zseg.z5 { background: #e05a5a; }
 .sub.good { color: var(--accent); } .sub.warn { color: var(--warn); }
+/* tabs */
+#tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); }
+#tabs .tab { background: none; border: none; border-bottom: 2px solid transparent; color: var(--muted); font: inherit; font-size: 13px; padding: 9px 14px; cursor: pointer; }
+#tabs .tab.on { color: var(--accent); border-bottom-color: var(--accent); font-weight: 700; }
+.tabpanel { display: flex; flex-direction: column; gap: 12px; }
+.tabpanel[hidden] { display: none; }
+/* verdict banner */
+.verdict { display: flex; align-items: baseline; gap: 12px; border-radius: 10px; padding: 12px 16px; border: 1px solid var(--line); background: linear-gradient(90deg, rgba(53,208,224,.14), transparent); }
+.verdict .vt { font-family: var(--mono); font-weight: 700; font-size: 16px; color: var(--accent); }
+.verdict .vr { font-size: 12px; color: #8fa0b3; }
+.verdict.risk-mod { background: linear-gradient(90deg, rgba(232,162,74,.14), transparent); border-color: #3a2f18; }
+.verdict.risk-mod .vt { color: var(--warn); }
+.verdict.risk-high { background: linear-gradient(90deg, rgba(224,90,90,.16), transparent); border-color: #3a1c1c; }
+.verdict.risk-high .vt { color: #e05a5a; }
+/* overview key numbers */
+.keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.key { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; }
+.key .kk { font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.key .kv { font-size: 18px; margin-top: 3px; } .key .kv .u { font-size: 10px; color: var(--muted); }
+.tech { color: #4a5a6b; font-size: 9px; }
+/* health grid */
+.health { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.health .ins.wide { grid-column: 1 / -1; }
+.pill.risk-low { background: #12261f; color: var(--accent); }
+.pill.risk-mod { background: #2c2718; color: var(--warn); }
+.pill.risk-high { background: #3a2513; color: var(--warn); }
+@media (max-width: 720px) { .keys { grid-template-columns: repeat(2, 1fr); } .health { grid-template-columns: 1fr; } }
