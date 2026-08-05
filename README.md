@@ -1,20 +1,18 @@
-# treeniloki
+# Treeniloki
 
-Treeniloki: Sports Tracker -export-skripti + client-side GPX-treenianalyysi.
+Client-side running tools. **GPX workout analyzer** + Sports Tracker export script.
 
-## Getting started
+## Analyzer
 
-```bash
-# clone
-git clone <repo-url>
-cd treeniloki
+Drag GPX files into the page → a dark topographic instrument dashboard: summary stats,
+break-aware trends, and science-backed injury-spike / training-load / comeback insights.
+100% client-side, no build, no dependencies.
 
-# install / run (fill in for this project)
-```
+**Run locally:** serve the folder over http (ES modules need it), e.g. `python -m http.server 8000`, then open <http://localhost:8000/>.
 
-## Development
+**Test:** `npm test` (node:test over `test/`).
 
-Describe how to build, test, and run.
+Deployed to GitHub Pages via `.github/workflows/ci.yml` on push to `main`.
 
 ## License
 

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="fi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Treeniloki</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="app/styles.css" />
+</head>
+<body>
+  <main id="app">
+    <header class="hd"><span class="brand">TREENI<b>LOKI</b></span><span id="hd-meta" class="lbl"></span></header>
+    <div id="drop" class="drop">⤢ Raahaa GPX-tiedostot tähän — tai <label class="pick">valitse<input id="file" type="file" accept=".gpx" multiple hidden></label></div>
+    <section id="summary"></section>
+    <section id="cards" class="cards3"></section>
+    <section id="charts" class="two"></section>
+    <section id="table"></section>
+  </main>
+  <script type="module" src="app/main.mjs"></script>
+</body>
+</html>
