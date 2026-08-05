@@ -7,7 +7,7 @@ function canvas(w, h) {
 }
 
 function distanceChart(model) {
-  const { c, ctx, w, h } = canvas(560, 150);
+  const { c, ctx, w, h } = canvas(560, 140);
   const ws = model.workouts;
   const max = Math.max(1, ...ws.map((x) => x.distanceKm));
   const bw = w / Math.max(ws.length, 1);
@@ -29,31 +29,39 @@ function distanceChart(model) {
   return c;
 }
 
-function elevationChart(model) {
-  const { c, ctx, w, h } = canvas(420, 150);
-  const last = model.workouts[model.workouts.length - 1];
-  const pts = (last && last.points) || [];
-  const eles = pts.map((p) => p.ele);
-  const lo = Math.min(...eles, 0), hi = Math.max(...eles, 1);
-  ctx.beginPath();
-  pts.forEach((p, i) => {
-    const x = (i / Math.max(pts.length - 1, 1)) * w;
-    const y = h - ((p.ele - lo) / (hi - lo || 1)) * (h - 8);
+function lineChart(points, color) {
+  const { c, ctx, w, h } = canvas(560, 120);
+  if (points.length < 2) return c;
+  const t0 = points[0].date, span = (points[points.length - 1].date - t0) || 1;
+  const vals = points.map((p) => p.value);
+  const lo = Math.min(...vals), hi = Math.max(...vals);
+  ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.beginPath();
+  points.forEach((p, i) => {
+    const x = ((p.date - t0) / span) * w;
+    const y = h - 6 - ((p.value - lo) / (hi - lo || 1)) * (h - 12);
     i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
   });
-  ctx.strokeStyle = "#35d0e0"; ctx.lineWidth = 1; ctx.stroke();
-  ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath(); ctx.fillStyle = "rgba(53,208,224,.15)"; ctx.fill();
+  ctx.stroke();
   return c;
 }
 
-export function renderCharts(el, model) {
+export function renderProgress(el, model) {
   el.innerHTML = "";
-  const left = document.createElement("div"); left.className = "panel";
-  const trend = model.trends.distance >= 0 ? "good" : "warn";
-  left.innerHTML = `<div class="lbl" style="margin-bottom:8px">Matka / aika + trendi <span class="${trend}">${model.trends.distance >= 0 ? "↑" : "↓"} ${(model.trends.distance * 30).toFixed(1)} km/kk</span></div>`;
-  left.appendChild(distanceChart(model));
-  const right = document.createElement("div"); right.className = "panel";
-  right.innerHTML = `<div class="lbl" style="margin-bottom:6px">Korkeusprofiili · viimeisin lenkki</div>`;
-  right.appendChild(elevationChart(model));
-  el.append(left, right);
+  const ws = model.workouts;
+
+  const d = document.createElement("div"); d.className = "panel";
+  const trendCls = model.trends.distance >= 0 ? "good" : "warn";
+  d.innerHTML = `<div class="lbl" style="margin-bottom:8px">Matka / aika · kehityssuunta <span class="${trendCls}">${model.trends.distance >= 0 ? "↑" : "↓"} ${(model.trends.distance * 30).toFixed(1)} km/kk</span></div>`;
+  d.appendChild(distanceChart(model));
+
+  const p = document.createElement("div"); p.className = "panel";
+  p.innerHTML = `<div class="lbl" style="margin-bottom:8px">Tahti <span class="tech">min/km · ylös = hitaampi</span></div>`;
+  p.appendChild(lineChart(ws.map((x) => ({ date: x.date, value: x.paceMinKm })), "#35d0e0"));
+
+  const v = document.createElement("div"); v.className = "panel";
+  v.innerHTML = `<div class="lbl" style="margin-bottom:8px">Kestävyyskunto <span class="tech">VO₂max-arvio</span></div>`;
+  if (model.vdot?.points?.length >= 2) v.appendChild(lineChart(model.vdot.points, "#7fd97f"));
+  else v.insertAdjacentHTML("beforeend", `<div class="sub">Tarvitaan ≥ 3 km suorituksia arvioon.</div>`);
+
+  el.append(d, p, v);
 }
