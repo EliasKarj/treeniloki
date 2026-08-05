@@ -7,6 +7,8 @@ import { acwr } from "../src/analysis/trainingLoad.mjs";
 import { detrainingNote } from "../src/analysis/detraining.mjs";
 import { renderGauges } from "./render/gauges.mjs";
 import { renderTable } from "./render/table.mjs";
+import { renderCards } from "./render/cards.mjs";
+import { renderCharts } from "./render/charts.mjs";
 
 let workouts = [];
 
@@ -44,6 +46,8 @@ async function addFiles(fileList) {
 function render(model) {
   document.getElementById("hd-meta").textContent = `${model.agg.count} treeniä`;
   renderGauges(document.getElementById("summary"), model);
+  renderCards(document.getElementById("cards"), model);
+  renderCharts(document.getElementById("charts"), model);
   renderTable(document.getElementById("table"), model);
 }
 
