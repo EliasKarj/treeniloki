@@ -23,10 +23,17 @@
       </ol>
       <p class="hint">Kaikki tapahtuu selaimessasi — mitään ei ladata palvelimelle. Export-skripti käyttää olemassa olevaa Sports Tracker -sessiotasi, ei salasanaa.</p>
     </details>
-    <section id="summary"></section>
-    <section id="cards" class="cards3"></section>
-    <section id="charts" class="two"></section>
-    <section id="table"></section>
+    <div id="verdict" class="verdict"></div>
+    <nav id="tabs">
+      <button class="tab on" data-tab="overview">Yleiskuva</button>
+      <button class="tab" data-tab="progress">Kehitys</button>
+      <button class="tab" data-tab="health">Terveys &amp; riski</button>
+      <button class="tab" data-tab="workouts">Treenit</button>
+    </nav>
+    <section id="tab-overview" class="tabpanel"></section>
+    <section id="tab-progress" class="tabpanel" hidden></section>
+    <section id="tab-health" class="tabpanel" hidden></section>
+    <section id="tab-workouts" class="tabpanel" hidden></section>
   </main>
   <script type="module" src="app/main.mjs"></script>
 </body>
