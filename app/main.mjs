@@ -9,8 +9,15 @@ import { renderGauges } from "./render/gauges.mjs";
 import { renderTable } from "./render/table.mjs";
 import { renderCards } from "./render/cards.mjs";
 import { renderCharts } from "./render/charts.mjs";
+import { intensityDistribution } from "../src/analysis/intensity.mjs";
+import { vdotTrend } from "../src/analysis/vo2max.mjs";
+import { hrSummary } from "../src/analysis/hrZones.mjs";
+import { coachingTips } from "../src/analysis/coaching.mjs";
+import { renderDetails } from "./render/details.mjs";
 
 let workouts = [];
+let goal = "endurance";
+let currentModel = null;
 
 function buildModel(ws) {
   const blocks = splitBlocks(ws);
@@ -29,6 +36,9 @@ function buildModel(ws) {
     load: acwr(ws),
     lastComeback: lastGap,
     detraining: lastGap ? detrainingNote(lastGap.gapDays) : null,
+    intensity: intensityDistribution(ws),
+    vdot: vdotTrend(ws),
+    hr: hrSummary(ws),
   };
 }
 
@@ -44,11 +54,20 @@ async function addFiles(fileList) {
 }
 
 function render(model) {
+  currentModel = model;
+  model.coaching = coachingTips(model, goal);
   document.getElementById("hd-meta").textContent = `${model.agg.count} treeniä`;
   renderGauges(document.getElementById("summary"), model);
   renderCards(document.getElementById("cards"), model);
   renderCharts(document.getElementById("charts"), model);
+  renderDetails(document.getElementById("deep-body"), model, goal, setGoal);
   renderTable(document.getElementById("table"), model);
+}
+
+function setGoal(g) {
+  goal = g;
+  currentModel.coaching = coachingTips(currentModel, goal);
+  renderDetails(document.getElementById("deep-body"), currentModel, goal, setGoal);
 }
 
 const drop = document.getElementById("drop");
