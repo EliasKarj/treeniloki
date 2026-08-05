@@ -17,6 +17,15 @@ body {
 .drop { border: 1px dashed #35506a; border-radius: 10px; padding: 14px; text-align: center; color: var(--muted); font-size: 13px; }
 .drop.over { border-color: var(--accent); color: var(--fg); }
 .pick { color: var(--accent); text-decoration: underline; cursor: pointer; }
+.help { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); padding: 0 12px; font-size: 13px; }
+.help summary { cursor: pointer; padding: 11px 0; color: var(--accent); font-weight: 600; list-style: none; }
+.help summary::-webkit-details-marker { display: none; }
+.help summary::before { content: "▸ "; color: var(--muted); }
+.help[open] summary::before { content: "▾ "; }
+.help ol { margin: 2px 0 8px; padding-left: 20px; color: #aeb9c6; line-height: 1.8; }
+.help code { font-family: var(--mono); background: #0d141c; border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; font-size: 12px; }
+.help a { color: var(--accent); }
+.help .hint { color: var(--muted); font-size: 11px; margin: 0 0 11px; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
 .gauges { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
 .g { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }

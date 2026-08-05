@@ -12,6 +12,17 @@
   <main id="app">
     <header class="hd"><span class="brand">TREENI<b>LOKI</b></span><span id="hd-meta" class="lbl"></span></header>
     <div id="drop" class="drop">⤢ Raahaa GPX-tiedostot tähän — tai <label class="pick">valitse<input id="file" type="file" accept=".gpx" multiple hidden></label></div>
+    <details class="help">
+      <summary>Mistä GPX-tiedostot? · Sports Tracker -export</summary>
+      <ol>
+        <li>Kirjaudu <a href="https://www.sports-tracker.com" target="_blank" rel="noopener">sports-tracker.com</a>iin.</li>
+        <li>Avaa selaimen kehittäjätyökalut → <b>Console</b> (F12).</li>
+        <li>Liitä koko <code>tools/sports-tracker-export.js</code>-skriptin sisältö ja paina Enter.</li>
+        <li>Skripti lataa koko treenihistoriasi yhtenä <code>sports-tracker-export-*.zip</code>-pakettina.</li>
+        <li>Pura zip ja <b>raahaa GPX-tiedostot</b> yllä olevaan pudotusalueeseen.</li>
+      </ol>
+      <p class="hint">Kaikki tapahtuu selaimessasi — mitään ei ladata palvelimelle. Export-skripti käyttää olemassa olevaa Sports Tracker -sessiotasi, ei salasanaa.</p>
+    </details>
     <section id="summary"></section>
     <section id="cards" class="cards3"></section>
     <section id="charts" class="two"></section>
