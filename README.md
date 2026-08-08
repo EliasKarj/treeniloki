@@ -21,7 +21,7 @@ add them to `ACTIVITY_NAMES` in the script for friendlier names.
 only fetches your own data. Nothing is uploaded anywhere. Log out/in afterwards if you
 want to rotate your session token.
 
-## Development
+**Test:** `npm test` (node:test over `test/`).
 
 ```bash
 npm test   # node --test on the pure/injectable helpers

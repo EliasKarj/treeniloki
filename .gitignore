@@ -40,3 +40,6 @@ coverage/
 .cache/
 .turbo/
 *.tsbuildinfo
+
+# brainstorm mockups
+.superpowers/
