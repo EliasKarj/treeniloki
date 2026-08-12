@@ -189,4 +189,9 @@ test("export.html documents the mobile route it actually supports", async () => 
   assert.match(html, /Pikakomennot/, "the better iOS route should be mentioned");
   assert.match(html, /Androidilla/, "the harder platform should be named honestly");
   assert.match(html, /ensivienti koneella/, "the practical recommendation must be there");
+  // iOS ei anna muokata osoitetta luontivaiheessa, joten ohje on hyödytön
+  // ellei se kerro että kirjanmerkki tallennetaan ensin ja muokataan vasta sitten.
+  assert.match(html, /ei voi muokata kirjanmerkkiä luotaessa/,
+    "the iOS steps must warn that the address is not editable at creation");
+  assert.match(html, /Muokkaa/, "the steps must name the Edit button that reveals the address");
 });
