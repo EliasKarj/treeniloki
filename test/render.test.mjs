@@ -13,7 +13,7 @@ import { gpxRun, runsToWorkouts, daysAgo } from "./helpers/fixtures.mjs";
 
 let dom;
 let buildModel;
-let renderVerdict, renderOverview, renderProgress, renderHealth, renderTable;
+let renderVerdict, renderOverview, renderProgress, renderHealth, renderTable, renderPeriods, fmtDuration;
 let coachingTips;
 
 before(async () => {
@@ -24,6 +24,7 @@ before(async () => {
   ({ renderProgress } = await import("../app/render/charts.mjs"));
   ({ renderHealth } = await import("../app/render/health.mjs"));
   ({ renderTable } = await import("../app/render/table.mjs"));
+  ({ renderPeriods, fmtDuration } = await import("../app/render/periods.mjs"));
   ({ coachingTips } = await import("../src/analysis/coaching.mjs"));
 });
 
@@ -148,6 +149,131 @@ test("key numbers carry the model's aggregates into the markup", () => {
   assert.match(html, /6:00/);
 });
 
+test("the key numbers cover totals the aggregates already carried but never showed", () => {
+  const target = el();
+  const model = calmModel();
+  model.coaching = [];
+  renderOverview(target, model, "endurance", () => {});
+  const html = target.html();
+
+  for (const label of ["Kokonaisaika", "Nousumetrit", "Lenkkejä", "Pisin lenkki"]) {
+    assert.ok(html.includes(label), `missing key number: ${label}`);
+  }
+  // 12 × 60 min = 720 min, shown as hours rather than as a four-digit minute count.
+  assert.match(html, /12 h 0 min/);
+  assert.match(html, /10\.0<span class="u"> km<\/span>/, "longest run should reach the markup");
+});
+
+test("the records panel names the record holder, not just the number", () => {
+  const now = Date.now();
+  const gpx = [
+    ...Array.from({ length: 5 }, (_, i) =>
+      gpxRun({ name: `Perus ${i + 1}`, start: daysAgo(30 - i * 3, now), km: 10, minutes: 60 }),
+    ),
+    gpxRun({ name: "Maraton", start: daysAgo(2, now), km: 42, minutes: 240, elevGainM: 310 }),
+  ];
+  const target = el();
+  const model = buildModel(runsToWorkouts(gpx));
+  model.coaching = [];
+  renderOverview(target, model, "endurance", () => {});
+  const html = target.html();
+
+  assert.match(html, /Ennätykset/);
+  assert.match(html, /Pisin lenkki/);
+  assert.match(html, /42\.0 km/);
+  assert.match(html, /Maraton/, "a record without its workout name is half the story");
+  assert.match(html, /Eniten nousua/);
+  assert.match(html, /310 m/);
+});
+
+test("a record with no basis is left out rather than shown as zero", () => {
+  const now = Date.now();
+  // Flat runs under 3 km: no climb record, and none long enough for a pace record.
+  const gpx = Array.from({ length: 3 }, (_, i) =>
+    gpxRun({ name: `Pätkä ${i + 1}`, start: daysAgo(9 - i * 3, now), km: 2, minutes: 14 }),
+  );
+  const target = el();
+  const model = buildModel(runsToWorkouts(gpx));
+  model.coaching = [];
+  renderOverview(target, model, "endurance", () => {});
+  const html = target.html();
+
+  assert.match(html, /class="rec"/, "the distance record still exists");
+  assert.doesNotMatch(html, /Eniten nousua/, "0 m is not a climbing record");
+  assert.doesNotMatch(html, /Nopein tahti/, "sub-3 km efforts must not set the pace record");
+});
+
+test("renderOverview omits the records panel entirely on an empty history", () => {
+  const model = buildModel([]);
+  model.coaching = [];
+  const target = el();
+  renderOverview(target, model, "endurance", () => {});
+  assert.doesNotMatch(target.html(), /Ennätykset/);
+});
+
+// ---------------------------------------------------------------- periods
+
+test("renderPeriods builds a year table and a month table", () => {
+  const now = Date.now();
+  const gpx = Array.from({ length: 20 }, (_, i) =>
+    gpxRun({ name: `Lenkki ${i + 1}`, start: daysAgo(400 - i * 20, now), km: 10, minutes: 60, elevGainM: 50 }),
+  );
+  const target = el();
+  renderPeriods(target, buildModel(runsToWorkouts(gpx)));
+  const html = target.html();
+
+  assert.match(html, /Vuodet/);
+  assert.match(html, /Kuukaudet/);
+  assert.match(html, /uusin ensin/, "the order must be stated, not guessed at");
+  for (const column of ["Matka", "Lenkkejä", "Aika", "Nousu", "Tahti"]) {
+    assert.ok(html.includes(column), `missing column: ${column}`);
+  }
+  // One bar per row, scaled against the busiest period.
+  assert.match(html, /class="pbar"/);
+  assert.match(html, /width:100%/, "the peak period should fill its bar");
+});
+
+test("renderPeriods hints instead of drawing an empty table", () => {
+  const target = el();
+  renderPeriods(target, buildModel([]));
+  assert.match(target.html(), /Lisää treenejä nähdäksesi kausiyhteenvedot/);
+  assert.doesNotMatch(target.html(), /<table/);
+});
+
+test("period pace is time over distance, not an average of paces", () => {
+  const now = Date.now();
+  // One 4-minute kilometre and one 8 km at 8:00 in the same month: the mean of
+  // the two paces would be 6:00, but 68 min over 9 km is 7:33.
+  const gpx = [
+    gpxRun({ name: "Veto", start: daysAgo(20, now), km: 1, minutes: 4 }),
+    gpxRun({ name: "Hölkkä", start: daysAgo(18, now), km: 8, minutes: 64 }),
+  ];
+  const target = el();
+  renderPeriods(target, buildModel(runsToWorkouts(gpx)));
+  assert.match(target.html(), /7:33/);
+  assert.doesNotMatch(target.html(), /6:00/);
+});
+
+test("a nearly empty period still gets a visible bar", () => {
+  const now = Date.now();
+  // 60 km one month against 1 km the next: 1.7 % of the peak would round to a
+  // bar too thin to see, which reads as "no data" rather than "a quiet month".
+  const gpx = [
+    gpxRun({ name: "Iso", start: daysAgo(45, now), km: 60, minutes: 360 }),
+    gpxRun({ name: "Pieni", start: daysAgo(5, now), km: 1, minutes: 6 }),
+  ];
+  const target = el();
+  renderPeriods(target, buildModel(runsToWorkouts(gpx)));
+  assert.match(target.html(), /width:2%/, "the floor keeps a quiet period on the page");
+});
+
+test("fmtDuration reads as hours once a period passes an hour", () => {
+  assert.equal(fmtDuration(0), "0 min");
+  assert.equal(fmtDuration(59.4), "59 min");
+  assert.equal(fmtDuration(60), "1 h 0 min");
+  assert.equal(fmtDuration(4993), "83 h 13 min");
+});
+
 // ----------------------------------------------------------------- health
 
 test("renderHealth emits all five cards", () => {
@@ -191,6 +317,69 @@ test("the break card reports the gap in days after a real break", () => {
   const target = el();
   renderHealth(target, buildModel(runsToWorkouts(gpx)));
   assert.match(target.html(), /77 pv/);
+});
+
+test("the load card shows the two numbers the ratio is built from", () => {
+  const target = el();
+  const model = calmModel();
+  renderHealth(target, model);
+  const html = target.html();
+  assert.match(html, /Viime 7 pv/);
+  assert.match(html, /Tavallinen viikko/);
+  // The window ends at the last workout, not today — say so rather than let a
+  // reader assume otherwise when the history was imported after the fact.
+  assert.match(html, /viim\. lenkistä/);
+  assert.match(html, new RegExp(`>${Math.round(model.load.acute)}<`));
+});
+
+test("the HR card lists minutes per zone, not just a bar", () => {
+  const target = el();
+  renderHealth(target, calmModel());
+  const html = target.html();
+  for (const z of ["Z1", "Z2", "Z3", "Z4", "Z5"]) {
+    assert.ok(html.includes(z), `missing zone label: ${z}`);
+  }
+  // 12 × 60 min all at HR 130 against a 130 max lands in the top zone.
+  assert.match(html, /720<\/b> min/);
+});
+
+test("the 80/20 card explains a stale history instead of blaming the data", () => {
+  const now = Date.now();
+  // A real import can end months ago; ACWR still reports because it anchors on
+  // the last workout, so "not enough data" alone reads as a contradiction.
+  const gpx = Array.from({ length: 4 }, (_, i) =>
+    gpxRun({ start: daysAgo(200 - i * 3, now), km: 10, minutes: 60, hr: 130 }),
+  );
+  const target = el();
+  renderHealth(target, buildModel(runsToWorkouts(gpx)));
+  assert.match(target.html(), /Viimeisin lenkki oli 191 pv sitten/);
+});
+
+test("the break card summarises the whole break history, not only the last one", () => {
+  const now = Date.now();
+  const gpx = [
+    gpxRun({ start: daysAgo(300, now), km: 10, minutes: 60 }),
+    gpxRun({ start: daysAgo(200, now), km: 10, minutes: 60 }), // 100 pv tauko
+    gpxRun({ start: daysAgo(160, now), km: 10, minutes: 60 }), // 40 pv tauko
+    gpxRun({ start: daysAgo(157, now), km: 10, minutes: 60 }),
+  ];
+  const target = el();
+  renderHealth(target, buildModel(runsToWorkouts(gpx)));
+  const html = target.html();
+  assert.match(html, /Taukoja yhteensä/);
+  assert.match(html, />2</, "two breaks were detected");
+  assert.match(html, /Pisin <b class="num">100<\/b> pv/);
+});
+
+test("four-digit minute counts are grouped so they can be read at a glance", () => {
+  const now = Date.now();
+  const gpx = Array.from({ length: 30 }, (_, i) =>
+    gpxRun({ start: daysAgo(90 - i * 3, now), km: 20, minutes: 120, hr: 140 }),
+  );
+  const target = el();
+  renderHealth(target, buildModel(runsToWorkouts(gpx)));
+  // 30 × 120 min = 3600 min in one zone — "3600" would need a second look.
+  assert.match(target.html(), /3 600<\/b> min/);
 });
 
 test("the HR card degrades to a hint when no workout carries heart rate", () => {
@@ -271,6 +460,7 @@ test("every renderer survives an empty model", () => {
     ["health", renderHealth],
     ["table", renderTable],
     ["progress", renderProgress],
+    ["periods", renderPeriods],
   ]) {
     assert.doesNotThrow(() => render(el(), model), `${name} threw on an empty model`);
   }

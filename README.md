@@ -267,8 +267,12 @@ tauon jälkeisestä paluusta, 80/20-jakaumasta, tahtitrendistä ja VO₂max-suun
 |------|---------|
 | **Kestävyyskunto** (VO₂max) | Tuorein viikoittainen VO₂max-arvio (ks. laskenta alempana) |
 | **Kokonaismatka** | Kaikkien treenien yhteispituus kilometreinä |
+| **Kokonaisaika** | Kaikkien treenien yhteiskesto tunteina ja minuutteina |
+| **Nousumetrit** | Kaikkien treenien yhteenlaskettu nousu |
 | **Ka. tahti** | Kokonaisaika ÷ kokonaismatka, muodossa `min:sek` per km |
+| **Lenkkejä** | Ladattujen treenien määrä |
 | **Lenkkejä / vk** | Treenitiheys **aktiivisilta jaksoilta** — yli 14 vrk:n tauot jätetään laskusta pois |
+| **Pisin lenkki** | Historian pisin yksittäinen treeni |
 
 > **▸ Miksi tauot jätetään tiheydestä pois:** jos juoksit vuoden ajan 3 kertaa viikossa, pidit
 > 3 kuukauden tauon ja jatkoit, koko kalenteriajalla jakaminen antaisi noin 2,3 lenkkiä
@@ -280,6 +284,29 @@ tauon jälkeisestä paluusta, 80/20-jakaumasta, tahtitrendistä ja VO₂max-suun
 > pitkiä lenkkejä. Yksittäisten tahtien keskiarvo antaisi 2 km:n hölkälle saman painon kuin
 > 30 km:n pitkälle, mikä vääristäisi kuvaa tyypillisestä vauhdistasi.
 
+**Ennätykset** — historian huiput, jokainen päivämäärän ja lenkin nimen kanssa.
+
+| Ennätys | Mistä se lasketaan |
+|---------|--------------------|
+| **Pisin lenkki** | Suurin yksittäinen matka |
+| **Nopein tahti** | Paras min/km **vähintään 3 km:n** lenkeiltä |
+| **Eniten nousua** | Suurin yksittäisen lenkin nousu |
+| **Suurin viikko** | Suurin maanantaista alkavan kalenteriviikon yhteismatka |
+| **Eniten lenkkejä / vk** | Eniten treenejä sisältänyt kalenteriviikko |
+| **Pisin putki** | Pisin katkeamaton sarja viikkoja, joilla on vähintään yksi treeni |
+
+> **▸ Miksi tahtiennätys vaatii 3 km:** 800 metrin kiihdytys voittaisi muuten aina, eikä se
+> kerro juoksukunnosta samaa asiaa kuin täysimittainen suoritus. Sama raja on käytössä
+> VO₂max-arviossa, joten kaksi eri lukua eivät voi olla eri mieltä siitä, mikä lenkki oli paras.
+>
+> **▸ Miksi putki lasketaan viikoissa eikä päivissä:** päiväputki rankaisisi lepopäivistä,
+> jotka kuuluvat jokaiseen järkevään ohjelmaan. Viikkoputki mittaa sitä, mitä oikeasti
+> halutaan tietää — jatkuvuutta.
+>
+> **▸ Miksi puuttuva ennätys jätetään pois:** jos yhtään ≥ 3 km:n lenkkiä ei ole, tahtiennätystä
+> ei ole olemassa. Nolla tai viiva sen paikalla näyttäisi mittaustulokselta; poissa oleva rivi
+> ei näytä miltään, mikä on tässä totuudenmukaisempaa.
+
 ### Välilehti: Kehitys
 
 | Kaavio | Mitä siinä on |
@@ -288,12 +315,28 @@ tauon jälkeisestä paluusta, 80/20-jakaumasta, tahtitrendistä ja VO₂max-suun
 | **Tahti** | Viiva min/km. Huom: **ylöspäin = hitaampi.** Laskeva viiva on siis hyvä uutinen. |
 | **Kestävyyskunto** | VO₂max-arvion kehitys. Vaatii vähintään kaksi ≥ 3 km:n suoritusta, muuten näyttää huomautuksen. |
 
+Jokaisessa kaaviossa on **asteikon arvot** vasemmassa reunassa ja **aikaväli** alareunassa.
+Kun viet hiiren kaavion päälle — tai kosketat sitä puhelimella — kaavion alle ilmestyy
+osoittamasi kohdan **päivämäärä ja tarkat luvut**.
+
 > **▸ Miksi tahtiakselia ei käännetä ympäri:** min/km on käänteinen mittari — pienempi on
 > parempi. Akselin kääntäminen tekisi kaaviosta intuitiivisemman, mutta arvot eivät enää
 > vastaisi taulukon lukuja, mikä on omiaan aiheuttamaan lukuvirheitä. Suunta kerrotaan siksi
 > otsikossa sanallisesti.
+>
+> **▸ Miksi kaavioihin lisättiin luvut:** ilman asteikkoa käyrä kertoo vain muodon. Muoto
+> vastaa kysymykseen "nouseeko vai laskeeko", mutta ei kysymykseen "kuinka paljon" — ja juuri
+> jälkimmäistä pitkää historiaa selatessa haluaa tietää.
 
 ### Välilehti: Terveys & riski
+
+Jokainen kortti näyttää tuloksen lisäksi **taustaluvut, joista se syntyy**: kuormasuhteen
+molemmat osat, taukojen määrän ja pisimmän tauon, sekä minuutit jokaisessa syke- ja
+tehoalueessa.
+
+> **▸ Miksi taustaluvut näkyviin:** pelkkä suhdeluku on jotain, joka pitää uskoa. Kun sen
+> osoittaja ja nimittäjä ovat vieressä, sen voi tarkistaa — ja huomata itse, jos luku on
+> outo siksi, että historiaa on liian vähän eikä siksi, että treenaaminen olisi mennyt pieleen.
 
 #### Iso matkahyppäys
 
@@ -466,6 +509,27 @@ Palkki näyttää ajan jakautumisen alueittain sekä helppo/keski/kova-prosentit
 > jokaisen peräkkäisen pisteparin todellinen kesto ja kirjaamalla se alkupisteen alueelle,
 > tulos on oikea myös silloin kun tallennustiheys vaihtelee kesken lenkin.
 
+### Välilehti: Kaudet
+
+Kaksi taulukkoa: **vuodet** ja **kuukaudet**, uusin ensin. Molemmissa samat sarakkeet —
+matka, lenkkien määrä, kokonaisaika, nousumetrit ja keskitahti — sekä suhteellinen palkki,
+jonka pituus kertoo kauden matkan verrattuna historian kovimpaan kauteen.
+
+> **▸ Miksi palkki lukujen rinnalle:** kahdenkymmenen kuukauden rivistöä ei lueta riviltä
+> riville, vaan silmäillään. Palkki tekee hiljaiset ja kovat kaudet näkyviksi ilman että
+> yhtäkään lukua tarvitsee lukea; luvut ovat vieressä sitä varten, kun haluaa tarkistaa.
+>
+> **▸ Miksi kauden tahti on kokonaisaika ÷ kokonaismatka:** sama syy kuin keskitahdissa —
+> yksittäisten lenkkien tahtien keskiarvo antaisi lyhyelle vetolenkille saman painon kuin
+> pitkälle peruslenkille. Kuukausi, jossa on yksi 4:00-kilometri ja kahdeksan kilometriä
+> 8:00-tahtia, ei ole 6:00-kuukausi vaan 7:33-kuukausi.
+>
+> **▸ Miksi tyhjiä kausia ei näytetä:** kuukausi ilman treenejä ei saa omaa riviään. Rivistö
+> kertoo mitä on tehty; tauot raportoidaan Terveys-välilehdellä, jossa niillä on merkitystä.
+
+Kapealla näytöllä palkkisarake piilotetaan ja taulukkoa voi vierittää sivusuunnassa —
+leikkautunut sarake olisi huonompi kuin vieritettävä.
+
 ### Välilehti: Treenit
 
 Taulukko kaikista treeneistä, uusin ylimpänä: päivä, nimi, matka, tahti, nousumetrit ja
@@ -597,7 +661,7 @@ Testit vaativat **Node.js 22+**. Riippuvuuksia ei tarvitse asentaa — kaikki k�
 sisäänrakennettua `node:test`-kirjastoa.
 
 ```bash
-npm test              # koko testisarja, 260 testiä
+npm test              # koko testisarja, 293 testiä
 npm run test:watch    # ajaa uudelleen kun tiedostot muuttuvat
 npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 ```
@@ -609,17 +673,19 @@ npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 | `test/*.test.mjs` (13 kpl) | Analyysimoduulit yksitellen | 58 |
 | `test/edges.test.mjs` | Raja-arvot — jokainen kynnys molemmilta puolilta | 38 |
 | `tools/core.test.js` | Jaettu vientiydin: uudelleenyritys, jatkaminen, reidittömien muisti | 38 |
-| `test/render.test.mjs` | `app/render/*` — kortit, taulukko, kaaviot, tavoitteet | 23 |
+| `test/render.test.mjs` | `app/render/*` — kortit, ennätykset, kaudet, taulukko, kaaviot | 37 |
 | `tools/export-cli.test.mjs` | Node-CLI: argumentit, levylle kirjoitus, jatkaminen | 24 |
-| `test/pipeline.test.mjs` | Koko putki GPX-tekstistä valmiiseen malliin | 13 |
-| `test/assets.test.mjs` | Sivujen eheys, moduuliverkko, kirjanmerkin liitettävyys | 14 |
-| `test/interaction.test.mjs` | Pudotus, välilehdet, tavoite, kevyen tallennus, vioittuneet | 16 |
 | `test/compact.test.mjs` | Kevyt muoto: riittävyys GPX:ään verrattuna, tallennus, kelvoton data | 21 |
+| `test/periods.test.mjs` | Vuosi- ja kuukausiyhteenvedot, ennätykset, viikkoputket | 19 |
+| `test/interaction.test.mjs` | Pudotus, välilehdet, tavoite, kevyen tallennus, vioittuneet | 16 |
 | `test/hostile.test.mjs` | Vihamielinen ja vioittunut GPX: XSS, XXE, ReDoS, NaN, kaatumiset | 15 |
-| | **Yhteensä** | **260** |
+| `test/assets.test.mjs` | Sivujen eheys, moduuliverkko, kirjanmerkin liitettävyys | 14 |
+| `test/pipeline.test.mjs` | Koko putki GPX-tekstistä valmiiseen malliin | 13 |
+| | **Yhteensä** | **293** |
 
-Kattavuus lähdekoodista: **rivit 94 %, haaraumat 94 %, funktiot 96 %**. Kattamatta jää
-export-skriptin selainliima (JSZip-lataus ja tiedoston tallennus), jota ei voi ajaa Nodessa.
+Kattavuus lähdekoodista: **rivit 97 %, haaraumat 93 %, funktiot 91 %**. Kattamatta jää
+lähinnä `app/main.mjs`:n selainliima — tiedoston lataus levylle ja välilehtien vaihto —
+sekä `export-cli.mjs`:n prosessitason kuori, jotka molemmat vaativat oikean ympäristön.
 
 > **▸ Miksi laskenta on eriytetty piirtämisestä:** `src/analysis/`-moduulit ovat puhtaita
 > funktioita ilman DOM-riippuvuuksia, joten jokainen raja-arvo yllä on testattavissa
@@ -656,7 +722,7 @@ index.html              Sivun runko: pudotusalue, välilehdet, ohjeet
 app/
   main.mjs              Tiedostojen luku, näkymämallin kokoaminen, välilehtien logiikka
   styles.css            Ulkoasu
-  render/               Piirtokerros — verdict, overview, charts, health, table
+  render/               Piirtokerros — verdict, overview, charts, health, periods, table
 src/
   parse/
     gpx.mjs             GPX-jäsennin (regex-pohjainen, toimii sekä selaimessa että Nodessa)
@@ -674,6 +740,8 @@ src/
     verdict.mjs           yläpalkin tilannearvio
     coaching.mjs          valmennusvinkkien johtaminen
     goals.mjs             tavoitteet ja vinkkien painotus
+    periods.mjs           vuosi- ja kuukausiyhteenvedot
+    records.mjs           ennätykset ja viikkoputket
 test/
   *.test.mjs            Analyysimoduulien, renderin ja putken testit
   helpers/              DOM-stub ja GPX-fixturet (ei riippuvuuksia)

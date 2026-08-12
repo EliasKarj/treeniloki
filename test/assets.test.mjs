@@ -54,7 +54,7 @@ test("the save-compact button starts hidden in the markup", async () => {
 test("index.html provides the tab and panel structure main.mjs queries", async () => {
   const html = await read("index.html");
   const tabs = [...html.matchAll(/data-tab="([^"]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(tabs, ["overview", "progress", "health", "workouts"]);
+  assert.deepEqual(tabs, ["overview", "progress", "health", "periods", "workouts"]);
   for (const tab of tabs) {
     assert.match(html, new RegExp(`id="tab-${tab}"[^>]*class="tabpanel"`), `missing panel for ${tab}`);
   }

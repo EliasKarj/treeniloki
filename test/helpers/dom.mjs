@@ -123,19 +123,19 @@ export class FakeElement {
 export function installAppDom() {
   const ids = [
     "app", "hd-meta", "drop", "drop-note", "save-compact", "file", "verdict", "tabs",
-    "tab-overview", "tab-progress", "tab-health", "tab-workouts",
+    "tab-overview", "tab-progress", "tab-health", "tab-periods", "tab-workouts",
   ];
   // The id must be set on the element itself: setTab() picks the visible panel
   // by comparing p.id, so an id-less stub would hide every panel at once.
   const byId = Object.fromEntries(ids.map((id) => [id, new FakeElement("div", id)]));
 
-  const tabs = ["overview", "progress", "health", "workouts"].map((name) => {
+  const tabs = ["overview", "progress", "health", "periods", "workouts"].map((name) => {
     const b = new FakeElement("button");
     b.dataset.tab = name;
     b.className = name === "overview" ? "tab on" : "tab";
     return b;
   });
-  const panels = ["overview", "progress", "health", "workouts"].map((name) => byId[`tab-${name}`]);
+  const panels = ["overview", "progress", "health", "periods", "workouts"].map((name) => byId[`tab-${name}`]);
 
   const previous = {
     document: globalThis.document, window: globalThis.window,

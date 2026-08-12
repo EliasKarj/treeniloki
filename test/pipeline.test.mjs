@@ -45,7 +45,7 @@ test("app/main.mjs imports and wires up its DOM handlers without throwing", () =
   assert.ok(dom.byId.drop.listeners.drop, "drop handler bound");
   assert.ok(dom.byId.drop.listeners.dragover, "dragover handler bound");
   assert.ok(dom.byId.file.listeners.change, "file input handler bound");
-  assert.equal(dom.tabs.filter((t) => t.listeners.click).length, 4, "every tab bound");
+  assert.equal(dom.tabs.filter((t) => t.listeners.click).length, 5, "every tab bound");
 });
 
 test("GPX text survives the parse → summarize round trip with exact numbers", () => {

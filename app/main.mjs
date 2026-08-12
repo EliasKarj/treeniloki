@@ -9,12 +9,15 @@ import { detrainingNote } from "../src/analysis/detraining.mjs";
 import { intensityDistribution } from "../src/analysis/intensity.mjs";
 import { vdotTrend } from "../src/analysis/vo2max.mjs";
 import { hrSummary } from "../src/analysis/hrZones.mjs";
+import { byYear, byMonth } from "../src/analysis/periods.mjs";
+import { records } from "../src/analysis/records.mjs";
 import { coachingTips } from "../src/analysis/coaching.mjs";
 import { renderVerdict } from "./render/verdict.mjs";
 import { renderOverview } from "./render/overview.mjs";
 import { renderProgress } from "./render/charts.mjs";
 import { renderHealth } from "./render/health.mjs";
 import { renderTable } from "./render/table.mjs";
+import { renderPeriods } from "./render/periods.mjs";
 
 let workouts = [];
 let goal = "endurance";
@@ -37,10 +40,13 @@ function buildModel(ws) {
     spikes: spikeRisk(ws),
     load: acwr(ws),
     lastComeback: lastGap,
+    breaks: cbs,
     detraining: lastGap ? detrainingNote(lastGap.gapDays) : null,
     intensity: intensityDistribution(ws),
     vdot: vdotTrend(ws),
     hr: hrSummary(ws),
+    periods: { years: byYear(ws), months: byMonth(ws) },
+    records: records(ws),
   };
 }
 
@@ -130,6 +136,7 @@ function render(model) {
   renderProgress(document.getElementById("tab-progress"), model);
   renderHealth(document.getElementById("tab-health"), model);
   renderTable(document.getElementById("tab-workouts"), model);
+  renderPeriods(document.getElementById("tab-periods"), model);
 }
 
 function setGoal(g) {

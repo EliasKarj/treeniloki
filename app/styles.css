@@ -37,7 +37,9 @@ body {
 .g { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
 .g .v { font-size: 18px; } .g .v .u { font-size: 10px; color: var(--muted); }
 .ins { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 11px; display: flex; flex-direction: column; gap: 6px; }
-.ins .h { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+/* Suora lapsi tarkoituksella: 80/20-palkin kova-osan luokka on myös "h", ja
+   ilman rajausta se sai kortin otsikkotyylin — siksi "kova" luki "KOVA". */
+.ins > .h { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 .ins .big { font-family: var(--mono); font-weight: 700; font-size: 16px; }
 .ins .sub { font-size: 11px; color: #8fa0b3; line-height: 1.5; }
 .pill { align-self: flex-start; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 20px; }
@@ -46,6 +48,12 @@ table { width: 100%; border-collapse: collapse; font-size: 12px; }
 th, td { text-align: left; padding: 6px; border-bottom: 1px solid #172029; }
 th { color: var(--muted); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
 canvas { width: 100%; display: block; }
+table.periods td.pl { font-weight: 600; white-space: nowrap; }
+table.periods td.pbar { width: 32%; padding-right: 12px; }
+table.periods td.pbar span { display: block; height: 7px; border-radius: 4px; background: var(--accent); opacity: .55; min-width: 2px; }
+table.periods td .u { color: var(--muted); font-size: 10px; }
+table.periods td { white-space: nowrap; }
+.tscroll { overflow-x: auto; }
 @media (max-width: 720px) { .gauges { grid-template-columns: repeat(3,1fr);} .cards3, .two { grid-template-columns: 1fr; } }
 .goals { display: flex; gap: 6px; flex-wrap: wrap; }
 .goals button { background: #0d141c; color: var(--muted); border: 1px solid var(--line); border-radius: 20px; padding: 5px 12px; font: inherit; font-size: 12px; cursor: pointer; }
@@ -78,9 +86,18 @@ canvas { width: 100%; display: block; }
 /* overview key numbers */
 .keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .key { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; }
-.key .kk { font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+/* Jaettu avainsanatyyli: sekä avainluvut että ennätysruudut käyttävät sitä,
+   joten otsikot pysyvät samannäköisinä molemmissa. */
+.kk { font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .key .kv { font-size: 18px; margin-top: 3px; } .key .kv .u { font-size: 10px; color: var(--muted); }
 .tech { color: #4a5a6b; font-size: 9px; }
+.recs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.rec { background: #0d141c; border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; }
+.rec .rv { font-size: 19px; margin: 2px 0 3px; color: var(--accent); }
+.rec .rd { font-size: 10px; color: var(--muted); line-height: 1.4; }
+.mini { display: flex; gap: 10px; flex-wrap: wrap; font-size: 10px; color: var(--muted); }
+.mini b { color: var(--fg); font-size: 11px; }
+.readout { font-size: 11px; color: var(--muted); font-family: var(--mono); min-height: 1.4em; margin-top: 4px; }
 /* health grid */
 .health { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .health .ins.wide { grid-column: 1 / -1; }
@@ -89,6 +106,7 @@ canvas { width: 100%; display: block; }
 .pill.risk-high { background: #3a2513; color: var(--warn); }
 @media (max-width: 720px) {
   .keys { grid-template-columns: repeat(2, 1fr); }
+  .recs { grid-template-columns: repeat(2, 1fr); }
   .health { grid-template-columns: 1fr; }
   /* "Terveys & riski" kiertyi kahdelle riville ja jätti välilehtirivin vinoksi.
      Kapeampi välistys pitää kaikki neljä yhdellä rivillä puhelimessa; jos ne
@@ -98,4 +116,5 @@ canvas { width: 100%; display: block; }
   #tabs .tab { padding: 9px 9px; font-size: 12px; white-space: nowrap; }
   table { font-size: 12px; }
   table th, table td { padding: 5px 4px; }
+  table.periods .pbar { display: none; }
 }
