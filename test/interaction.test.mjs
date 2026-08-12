@@ -122,3 +122,31 @@ test("changing the goal reorders tips but leaves the key numbers alone", () => {
   assert.equal(kmAfter, kmBefore, "the goal must not change the underlying totals");
   assert.equal(goalButtons().find((b) => b.className === "on").textContent, "Loukkaantumissuoja");
 });
+
+test("skipped files are named instead of failing silently", async () => {
+  // Regressio: addFiles ei napannut virheitä, joten yksi lukukelvoton tiedosto
+  // keskeytti koko pudotuksen eikä mitään renderöity.
+  const now = Date.now();
+  const good = fakeFile("hyva.gpx", gpxRun({ start: daysAgo(2, now), km: 7, minutes: 42 }));
+  const exploding = { name: "rikki.gpx", text: async () => { throw new Error("lukuvirhe"); } };
+  const notGpx = fakeFile("muistio.txt", "ei tämä ole gpx");
+
+  const countBefore = dom.byId["hd-meta"].textContent;
+  dom.byId.drop.dispatch("drop", { dataTransfer: { files: [good, exploding, notGpx] } });
+  await waitFor(() => dom.byId["hd-meta"].textContent !== countBefore, "the good file to be added");
+
+  const note = dom.byId["drop-note"].textContent;
+  assert.match(note, /2 tiedostoa ohitettiin/);
+  assert.match(note, /rikki\.gpx|muistio\.txt/, "should name what was skipped");
+  assert.match(dom.byId["tab-workouts"].html(), /Kaikki treenit/, "the good file still rendered");
+});
+
+test("a clean batch clears the skipped-files note", async () => {
+  const now = Date.now();
+  const countBefore = dom.byId["hd-meta"].textContent;
+  dom.byId.drop.dispatch("drop", {
+    dataTransfer: { files: [fakeFile("puhdas.gpx", gpxRun({ start: daysAgo(1, now), km: 9, minutes: 54 }))] },
+  });
+  await waitFor(() => dom.byId["hd-meta"].textContent !== countBefore, "the file to be added");
+  assert.equal(dom.byId["drop-note"].textContent, "", "the note must not linger");
+});

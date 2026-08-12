@@ -23,6 +23,7 @@ Raahaa GPX-tiedostot sivulle ja saat kuntotrendit, loukkaantumisriskin, sykealue
 - [Paikallinen ajo ja kehitys](#paikallinen-ajo-ja-kehitys)
 - [Testit](#testit)
 - [Projektin rakenne](#projektin-rakenne)
+- [Vihamielinen syöte](#vihamielinen-syöte)
 - [Tietosuoja](#tietosuoja)
 
 Jokaisen laskennan kohdalla on **▸ Miksi näin** -perustelu: mihin raja-arvo perustuu ja
@@ -527,7 +528,7 @@ Testit vaativat **Node.js 22+**. Riippuvuuksia ei tarvitse asentaa — kaikki k�
 sisäänrakennettua `node:test`-kirjastoa.
 
 ```bash
-npm test              # koko testisarja, 213 testiä
+npm test              # koko testisarja, 230 testiä
 npm run test:watch    # ajaa uudelleen kun tiedostot muuttuvat
 npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 ```
@@ -543,8 +544,9 @@ npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 | `tools/export-cli.test.mjs` | Node-CLI: argumentit, levylle kirjoitus, jatkaminen | 24 |
 | `test/pipeline.test.mjs` | Koko putki GPX-tekstistä valmiiseen malliin | 13 |
 | `test/assets.test.mjs` | Sivujen eheys: viittaukset, moduuliverkko, havainnekuvat | 11 |
-| `test/interaction.test.mjs` | Tiedostojen pudotus, välilehdet, tavoitteen vaihto | 8 |
-| | **Yhteensä** | **213** |
+| `test/interaction.test.mjs` | Pudotus, välilehdet, tavoite, vioittuneiden ohitus | 10 |
+| `test/hostile.test.mjs` | Vihamielinen ja vioittunut GPX: XSS, XXE, ReDoS, NaN, kaatumiset | 15 |
+| | **Yhteensä** | **230** |
 
 Kattavuus lähdekoodista: **rivit 94 %, haaraumat 94 %, funktiot 96 %**. Kattamatta jää
 export-skriptin selainliima (JSZip-lataus ja tiedoston tallennus), jota ei voi ajaa Nodessa.
@@ -610,6 +612,55 @@ tools/
   export-cli.mjs             Node-komentorivi
 .github/workflows/      CI: testit, kattavuus, julkaisu
 ```
+
+---
+
+## Vihamielinen syöte
+
+GPX-tiedosto voi tulla tuntemattomalta, rikkinäiseltä laitteelta tai olla katkennut kesken.
+Jäsennin kohtelee syötettä epäluotettavana ja jokainen alla oleva väite on testattu
+tiedostossa `test/hostile.test.mjs`.
+
+| Hyökkäys | Tilanne |
+|----------|---------|
+| **XSS** treenin nimessä | Ei mahdollinen. Nimen kaappaava kuvio sulkee `<`-merkin pois, joten tagia ei voi edes poimia. Entiteettikoodattu hyökkäys purkautuu `innerHTML`:ssä tekstisolmuksi, ei merkkaukseksi. |
+| **XXE** / ulkoiset entiteetit | Ei mahdollinen. Regex-jäsennin ei laajenna entiteettejä, joten `&xxe;` pysyy kirjaimellisena merkkijonona. |
+| **ReDoS** | Ei havaittu. 200 000 merkkiä ilman sulkevaa tagia jäsentyy alle millisekunnissa; laiskat kvantifioijat on rajattu `>`-merkkiin. |
+| **Prototyyppisaaste** | Ei mahdollinen. Kentät ovat kiinteitä, syötteestä ei tule avaimia. |
+| **NaN-myrkytys** | Korjattu. Kelvoton koordinaatti pudotetaan pisteineen. |
+| **Kaatuminen pitkällä tiedostolla** | Korjattu. |
+
+> **▸ Uhkamalli rehellisesti:** sovellus on paikallinen, palvelinta ei ole eikä muiden
+> käyttäjien dataa ole olemassa. Pahin mitä vihamielinen GPX voi tehdä on rikkoa **oma**
+> näkymäsi — sillä ei ole mitään mitä varastaa eikä ketään muuta kohteena. Se ei silti ole
+> syy jättää asiaa: sama koodi käsittelee myös aidosti vioittuneita tiedostoja oikeilta
+> laitteilta.
+>
+> **▸ Miksi NaN oli oikea ongelma:** `lat="..."` täyttää lukuja kaappaavan merkkiluokan mutta
+> tuottaa `NaN`:n. Yksi tällainen piste levitti NaN:n matkaan, tahtiin, kokonaissummiin ja
+> jokaiseen kaavioon — eli **yksi rikkinäinen tiedosto rikkoi koko koontinäytön**, ei vain
+> omaa riviään. Nyt kelvottomat koordinaatit ja WGS84-alueen ulkopuoliset arvot pudotetaan
+> jäsennysvaiheessa.
+>
+> **▸ Miksi pitkä tiedosto kaatoi jäsentimen:** sykkeen maksimi laskettiin
+> `Math.max(...hrs)`-levityksellä, joka heittää `RangeError`in noin 125 000 lukeman jälkeen.
+> Tähän ei tarvittu pahantahtoisuutta lainkaan: **40 tunnin ultra sekunnin näytteistyksellä
+> ylittää rajan itsestään.** Nyt maksimi lasketaan silmukalla, ja 300 000 pistettä jäsentyy
+> ilman ongelmia.
+>
+> **▸ Miksi epäuskottava syke hylätään:** sykealueet lasketaan koko historian korkeimmasta
+> havaitusta sykkeestä, joten yksittäinen anturivirhe — vaikka 999 — siirtäisi kaikki
+> aluerajat ja saisi jokaisen treenin näyttämään helpolta. Alueen 25–240 ulkopuoliset lukemat
+> käsitellään puuttuvina.
+>
+> **▸ Miksi pisteet järjestetään ajan mukaan:** laitteet lähettävät toisinaan pisteitä
+> epäjärjestyksessä, ja käänteinen pari tuotti negatiivisen keston ja negatiivisen tahdin.
+> Järjestäminen on anteeksiantavampi kuin tiedoston hylkääminen.
+>
+> **▸ Miksi yksi tiedosto ei enää kaada koko pudotusta:** aiemmin `addFiles` ei napannut
+> virheitä, joten sadan tiedoston joukossa yksi lukukelvoton keskeytti kaiken eikä mitään
+> renderöity. Nyt jokainen tiedosto on erikseen suojattu, ja ohitetut nimetään
+> pudotusalueen alla — hiljaisuus ei saa näyttää onnistumiselta.
 
 ---
 

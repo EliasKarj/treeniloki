@@ -44,14 +44,33 @@ function buildModel(ws) {
 }
 
 async function addFiles(fileList) {
+  const rejected = [];
   for (const file of fileList) {
-    const text = await file.text();
-    const parsed = parseGpx(text);
-    if (!parsed) continue; // skip non-GPX / track-less
-    workouts.push({ id: file.name, ...parsed, ...summarizeWorkout(parsed.points) });
+    // Per-file guard: dropping hundreds of files should not lose everything
+    // because one of them is truncated, unreadable or not a track at all.
+    try {
+      const text = await file.text();
+      const parsed = parseGpx(text);
+      if (!parsed) { rejected.push(file.name); continue; } // non-GPX / track-less
+      workouts.push({ id: file.name, ...parsed, ...summarizeWorkout(parsed.points) });
+    } catch (e) {
+      rejected.push(file.name);
+      console.warn(`Treeniloki: ${file.name} ohitettiin — ${e.message}`);
+    }
   }
   workouts.sort((a, b) => a.date - b.date);
   render(buildModel(workouts));
+  reportRejected(rejected);
+}
+
+/** Name the skipped files, so silence never looks like success. */
+function reportRejected(rejected) {
+  const el = document.getElementById("drop-note");
+  if (!el) return;
+  el.textContent = rejected.length
+    ? `${rejected.length} tiedostoa ohitettiin (ei GPS-reittiä tai vioittunut): ` +
+      `${rejected.slice(0, 3).join(", ")}${rejected.length > 3 ? " …" : ""}`
+    : "";
 }
 
 function render(model) {
