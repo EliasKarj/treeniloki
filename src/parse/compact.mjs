@@ -46,9 +46,39 @@ export function toCompactRecord(workout, key) {
     el: round(workout.elevGain, 1),
   };
   if (key) rec.k = key;
-  const hist = workout.points ? hrHistogram(workout.points) : workout.hrHistogram;
+  // Valmis histogrammi ensin: kompaktista luetulla treenillä `points` on tyhjä
+  // taulukko, joka on totuusarvoltaan tosi — siitä laskettu histogrammi olisi
+  // tyhjä ja syke katoaisi uudelleentallennuksessa.
+  const hist = workout.hrHistogram || (workout.points ? hrHistogram(workout.points) : null);
   if (hist && Object.keys(hist).length) rec.hr = hist;
   return rec;
+}
+
+/**
+ * Poimi Sports Trackerin workoutKey vientinimestä, esim.
+ * "2024-01-01_running_abc123.gpx" → "abc123". Palauttaa null muille nimille.
+ *
+ * Näin GPX:stä ladatut treenit säilyttävät saman tunnisteen kuin kevyestä
+ * muodosta luetut, ja kaksoiskappaleiden tunnistus toimii muotojen välillä.
+ */
+export function keyFromFilename(name) {
+  const m = /^\d{4}-\d{2}-\d{2}_[^_]+_(.+)\.gpx$/.exec(String(name || ""));
+  return m ? m[1] : null;
+}
+
+/**
+ * Ladatut treenit → kevyt tiedosto.
+ *
+ * Toimii riippumatta siitä onko treeni luettu GPX:stä (reittipisteet) vai
+ * kevyestä tiedostosta (histogrammi), joten jo kevyen tiedoston voi tallentaa
+ * uudelleen ilman että mitään rappeutuu.
+ */
+export function workoutsToCompactFile(workouts) {
+  const records = workouts
+    .slice()
+    .sort((a, b) => a.date - b.date)
+    .map((w) => toCompactRecord(w, w.key || keyFromFilename(w.id)));
+  return buildCompactFile(records);
 }
 
 /** Kokoa tiedosto tietueista. */

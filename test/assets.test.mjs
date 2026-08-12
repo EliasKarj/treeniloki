@@ -42,6 +42,15 @@ test("index.html declares every element main.mjs looks up", async () => {
   }
 });
 
+test("the save-compact button starts hidden in the markup", async () => {
+  // main.mjs paljastaa sen vasta kun treenejä on ladattu; tyhjällä sivulla se
+  // olisi harhaanjohtava, joten alkutila tulee HTML:stä eikä skriptistä.
+  const html = await read("index.html");
+  const button = html.match(/<button[^>]*id="save-compact"[^>]*>/);
+  assert.ok(button, "expected a save-compact button");
+  assert.match(button[0], /\bhidden\b/, "it must start hidden");
+});
+
 test("index.html provides the tab and panel structure main.mjs queries", async () => {
   const html = await read("index.html");
   const tabs = [...html.matchAll(/data-tab="([^"]+)"/g)].map((m) => m[1]);

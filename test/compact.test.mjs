@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 
 import {
   COMPACT_VERSION, hrHistogram, toCompactRecord, buildCompactFile, isCompact, parseCompact, histogramStats,
+  keyFromFilename, workoutsToCompactFile,
 } from "../src/parse/compact.mjs";
 import { parseGpx } from "../src/parse/gpx.mjs";
 import { summarizeWorkout } from "../src/analysis/workout.mjs";
@@ -210,4 +211,45 @@ test("a workout key is preserved so the analyser can de-duplicate", () => {
   ])));
   assert.equal(w.key, "abc123");
   assert.equal(w.id, "abc123");
+});
+
+// ------------------------------------------------- tallennus ladatuista
+
+test("keyFromFilename recovers the workout key from an export filename", () => {
+  assert.equal(keyFromFilename("2024-01-01_running_abc123.gpx"), "abc123");
+  assert.equal(keyFromFilename("2024-12-31_act14_xY_9.gpx"), "xY_9");
+  for (const other of ["random.gpx", "abc123.gpx", "", null, undefined, "2024-01-01_running_abc.json"]) {
+    assert.equal(keyFromFilename(other), null, `should not guess from ${JSON.stringify(other)}`);
+  }
+});
+
+test("workoutsToCompactFile keeps identity so formats de-duplicate against each other", () => {
+  const now = Date.now();
+  const [w] = runsToWorkouts([gpxRun({ start: daysAgo(3, now), km: 8, minutes: 48, hr: 140 })]);
+  const file = workoutsToCompactFile([{ ...w, id: "2025-01-01_running_abc.gpx" }]);
+  assert.equal(file.workouts[0].k, "abc", "the key must survive the GPX → compact hop");
+});
+
+test("re-saving a compact file loses nothing", () => {
+  const now = Date.now();
+  const original = runsToWorkouts([
+    gpxRun({ name: "A", start: daysAgo(9, now), km: 10, minutes: 60, hr: 130, elevGainM: 40 }),
+    gpxRun({ name: "B", start: daysAgo(3, now), km: 5, minutes: 21, hr: 180 }),
+  ]);
+
+  const once = parseCompact(JSON.stringify(workoutsToCompactFile(original)));
+  const twice = parseCompact(JSON.stringify(workoutsToCompactFile(once)));
+
+  assert.deepEqual(aggregate(twice), aggregate(once));
+  assert.deepEqual(hrSummary(twice), hrSummary(once));
+  assert.deepEqual(twice.map((w) => w.name), once.map((w) => w.name));
+});
+
+test("workoutsToCompactFile sorts chronologically regardless of input order", () => {
+  const now = Date.now();
+  const file = workoutsToCompactFile([
+    { id: "b", date: now, name: "uusin", distanceKm: 5, durationMin: 30, elevGain: 0, points: [] },
+    { id: "a", date: now - 86400000, name: "vanhin", distanceKm: 5, durationMin: 30, elevGain: 0, points: [] },
+  ]);
+  assert.deepEqual(file.workouts.map((w) => w.n), ["vanhin", "uusin"]);
 });

@@ -197,3 +197,76 @@ test("a JSON file that is not a compact export is rejected, not misread", async 
   assert.equal(dom.byId["hd-meta"].textContent, before);
   assert.match(dom.byId["drop-note"].textContent, /ohitettiin/);
 });
+
+// ---- kevyen tiedoston tallennus ladatuista treeneistä ----
+
+test("saving turns loaded GPX workouts into one compact file", async () => {
+  const now = Date.now();
+  const files = Array.from({ length: 4 }, (_, i) =>
+    fakeFile(
+      `2025-01-0${i + 1}_running_key${i}.gpx`,
+      gpxRun({ name: `Tallennus ${i + 1}`, start: daysAgo(20 - i * 4, now), km: 10, minutes: 60, hr: 140 }),
+    ),
+  );
+  const before = dom.byId["hd-meta"].textContent;
+  dom.byId.drop.dispatch("drop", { dataTransfer: { files } });
+  await waitFor(() => dom.byId["hd-meta"].textContent !== before, "the GPX files to load");
+
+  assert.equal(dom.byId["save-compact"].hidden, false, "the button appears once there is data");
+
+  const countBefore = dom.downloads.length;
+  dom.byId["save-compact"].dispatch("click");
+  assert.equal(dom.downloads.length, countBefore + 1, "a download should have started");
+
+  const saved = dom.downloads[dom.downloads.length - 1];
+  assert.match(saved.name, /^treeniloki-\d{4}-\d{2}-\d{2}\.json$/);
+
+  const parsed = JSON.parse(saved.text);
+  assert.equal(parsed.treeniloki, 1);
+  assert.ok(parsed.workouts.length >= 4);
+  const mine = parsed.workouts.filter((w) => /^key\d$/.test(w.k || ""));
+  assert.equal(mine.length, 4, "the workout key should be recovered from the export filename");
+  assert.ok(mine.every((w) => w.hr && Object.keys(w.hr).length), "heart rate must survive as a histogram");
+});
+
+test("the saved file is far smaller than the GPX it came from", async () => {
+  const now = Date.now();
+  const gpx = gpxRun({ name: "Iso", start: daysAgo(1, now), km: 12, minutes: 70, hr: 145, pointCount: 400 });
+  const before = dom.byId["hd-meta"].textContent;
+  dom.byId.drop.dispatch("drop", {
+    dataTransfer: { files: [fakeFile("2025-02-02_running_iso.gpx", gpx)] },
+  });
+  await waitFor(() => dom.byId["hd-meta"].textContent !== before, "the file to load");
+
+  dom.byId["save-compact"].dispatch("click");
+  const saved = dom.downloads[dom.downloads.length - 1];
+  const record = saved.text.match(/\{[^{}]*"k":"iso"[^{}]*\{[^{}]*\}[^{}]*\}/);
+  assert.ok(record, "the saved file should contain the workout");
+  assert.ok(record[0].length * 20 < gpx.length, `record ${record[0].length} B vs gpx ${gpx.length} B`);
+});
+
+test("a saved file loads back with the same analysis — the round trip closes", async () => {
+  dom.byId["save-compact"].dispatch("click");
+  const saved = dom.downloads[dom.downloads.length - 1];
+  const expected = dom.byId["hd-meta"].textContent;
+  const healthBefore = dom.byId["tab-health"].html();
+
+  // Uusi istunto: vain tallennettu tiedosto, ei yhtään GPX:ää.
+  const fresh = installAppDom();
+  try {
+    const mod = await import("../app/main.mjs?roundtrip");
+    void mod;
+    fresh.byId.drop.dispatch("drop", {
+      dataTransfer: { files: [{ name: "takaisin.json", text: async () => saved.text }] },
+    });
+    const deadline = Date.now() + 3000;
+    while (Date.now() < deadline && fresh.byId["hd-meta"].textContent === "") {
+      await new Promise((r) => setTimeout(r, 5));
+    }
+    assert.equal(fresh.byId["hd-meta"].textContent, expected, "the same number of workouts comes back");
+    assert.ok(/Sykealueet/.test(fresh.byId["tab-health"].html()), "HR zones survive the round trip");
+    assert.ok(!/Ei sykedataa/.test(healthBefore), "and were present to begin with");
+  } finally {
+    fresh.uninstall();
+  }
+});

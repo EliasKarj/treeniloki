@@ -86,6 +86,13 @@ export class FakeElement {
   addEventListener(type, fn) {
     (this.listeners[type] ||= []).push(fn);
   }
+  /** Anchors are clicked programmatically to start a download. */
+  click() {
+    this.dispatch("click");
+  }
+  remove() {
+    this.removed = true;
+  }
   /** Fire a listener the way the browser would, for interaction tests. */
   dispatch(type, event = {}) {
     for (const fn of this.listeners[type] || []) fn({ preventDefault() {}, ...event });
@@ -115,7 +122,7 @@ export class FakeElement {
  */
 export function installAppDom() {
   const ids = [
-    "app", "hd-meta", "drop", "drop-note", "file", "verdict", "tabs",
+    "app", "hd-meta", "drop", "drop-note", "save-compact", "file", "verdict", "tabs",
     "tab-overview", "tab-progress", "tab-health", "tab-workouts",
   ];
   // The id must be set on the element itself: setTab() picks the visible panel
@@ -130,10 +137,45 @@ export function installAppDom() {
   });
   const panels = ["overview", "progress", "health", "workouts"].map((name) => byId[`tab-${name}`]);
 
-  const previous = { document: globalThis.document, window: globalThis.window };
+  const previous = {
+    document: globalThis.document, window: globalThis.window,
+    Blob: globalThis.Blob, URL: globalThis.URL,
+  };
+
+  // Downloads are a side effect worth asserting on, so anchor clicks are
+  // recorded together with the blob contents rather than silently dropped.
+  const downloads = [];
+  const blobText = new Map();
+
+  globalThis.Blob = class FakeBlob {
+    constructor(parts) {
+      this.parts = parts;
+      this.textValue = parts.join("");
+    }
+    text() {
+      return Promise.resolve(this.textValue);
+    }
+  };
+  globalThis.URL = {
+    createObjectURL: (blob) => {
+      const url = `blob:fake/${blobText.size}`;
+      blobText.set(url, blob.textValue);
+      return url;
+    },
+    revokeObjectURL: (url) => blobText.delete(url),
+  };
 
   globalThis.document = {
-    createElement: (tag) => new FakeElement(tag),
+    body: new FakeElement("body"),
+    createElement: (tag) => {
+      const el = new FakeElement(tag);
+      if (String(tag).toLowerCase() === "a") {
+        el.addEventListener("click", () => {
+          downloads.push({ name: el.download, text: blobText.get(el.href) });
+        });
+      }
+      return el;
+    },
     getElementById: (id) => byId[id] ?? null,
     querySelectorAll: (selector) => {
       if (selector === "#tabs .tab") return tabs;
@@ -146,6 +188,8 @@ export function installAppDom() {
   const uninstall = () => {
     globalThis.document = previous.document;
     globalThis.window = previous.window;
+    globalThis.Blob = previous.Blob;
+    globalThis.URL = previous.URL;
   };
-  return { byId, tabs, panels, uninstall };
+  return { byId, tabs, panels, downloads, uninstall };
 }

@@ -1,5 +1,5 @@
 import { parseGpx } from "../src/parse/gpx.mjs";
-import { parseCompact } from "../src/parse/compact.mjs";
+import { parseCompact, workoutsToCompactFile } from "../src/parse/compact.mjs";
 import { summarizeWorkout } from "../src/analysis/workout.mjs";
 import { aggregate } from "../src/analysis/aggregate.mjs";
 import { splitBlocks, slopePerDay, comeback, activeFrequencyPerWeek } from "../src/analysis/breaks.mjs";
@@ -87,6 +87,28 @@ async function addFiles(fileList) {
   workouts.sort((a, b) => a.date - b.date);
   render(buildModel(workouts));
   reportRejected(rejected);
+  saveButton.hidden = workouts.length === 0;
+}
+
+/**
+ * Kirjoita ladatut treenit kevyeksi tiedostoksi.
+ *
+ * Tämä sulkee kierron: GPX-vienti säilyttää reittiviivan arkistona, ja tästä
+ * saa siitä huolimatta pienen tiedoston puhelinta varten ilman että koko
+ * vientiä tarvitsee ajaa uudelleen Sports Trackeria vasten.
+ */
+function saveCompact() {
+  if (!workouts.length) return;
+  const json = JSON.stringify(workoutsToCompactFile(workouts));
+  const stamp = new Date().toISOString().slice(0, 10);
+  const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `treeniloki-${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 /** Name the skipped files, so silence never looks like success. */
@@ -121,6 +143,9 @@ function setTab(id) {
   for (const b of document.querySelectorAll("#tabs .tab")) b.classList.toggle("on", b.dataset.tab === id);
   for (const p of document.querySelectorAll(".tabpanel")) p.hidden = p.id !== `tab-${id}`;
 }
+
+const saveButton = document.getElementById("save-compact");
+saveButton.addEventListener("click", saveCompact);
 
 const drop = document.getElementById("drop");
 drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });

@@ -112,6 +112,27 @@ GPS-reittiä olevat treenit (käsin lisätyt, sisäjuoksut) ohitetaan.
 > lasketut arvot jäätyvät vientihetkeen: jos nousumetrien kynnys joskus muuttuu, vanhoja
 > tiedostoja ei voi laskea uudelleen. Siksi kevyt muoto on **vaihtoehto GPX:lle, ei korvaaja.**
 
+### Ei tarvitse valita: molemmat samalla vaivalla
+
+Kun treenit on ladattu analyysisivulle, pudotusalueen alle ilmestyy painike
+**⤓ Tallenna kevyt tiedosto**. Se kirjoittaa ladatuista treeneistä saman `.json`-tiedoston
+ilman että vientiä tarvitsee ajaa uudelleen Sports Trackeria vasten.
+
+Käytännössä siis:
+
+1. Vie **kerran GPX-muodossa** → täysi arkisto reitteineen koneellasi
+2. Raahaa analyysisivulle
+3. Paina **⤓ Tallenna kevyt tiedosto** → ~1,6 MB puhelinta varten
+
+> **▸ Miksi tämä sulkee kierron:** GPX-vienti säilyttää reittiviivan, mutta 2,3 gigatavua ei
+> kulje puhelimeen. Ilman tätä painiketta joutuisi valitsemaan kumman haluaa — tai ajamaan
+> koko 3436 treenin viennin kahdesti. Nyt arkisto ja kevyt tiedosto syntyvät samalla vaivalla.
+>
+> **▸ Miksi tunniste poimitaan tiedostonimestä:** vientitiedostot ovat muotoa
+> `YYYY-MM-DD_<laji>_<workoutKey>.gpx`, joten workoutKey saadaan talteen myös GPX:stä
+> ladatuille treeneille. Näin sama treeni tunnistetaan samaksi riippumatta siitä kummasta
+> muodosta se on luettu, eikä kaksoiskappaleita synny jos pudotat molemmat.
+
 **Jos ajo katkeaa** — kone jämähtää, suljet välilehden, verkko pätkii — klikkaa kirjanmerkkiä
 uudelleen ja valitse sama kansio. Jo tallennetut ohitetaan automaattisesti.
 
@@ -571,7 +592,7 @@ Testit vaativat **Node.js 22+**. Riippuvuuksia ei tarvitse asentaa — kaikki k�
 sisäänrakennettua `node:test`-kirjastoa.
 
 ```bash
-npm test              # koko testisarja, 251 testiä
+npm test              # koko testisarja, 259 testiä
 npm run test:watch    # ajaa uudelleen kun tiedostot muuttuvat
 npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 ```
@@ -586,11 +607,11 @@ npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 | `test/render.test.mjs` | `app/render/*` — kortit, taulukko, kaaviot, tavoitteet | 23 |
 | `tools/export-cli.test.mjs` | Node-CLI: argumentit, levylle kirjoitus, jatkaminen | 24 |
 | `test/pipeline.test.mjs` | Koko putki GPX-tekstistä valmiiseen malliin | 13 |
-| `test/assets.test.mjs` | Sivujen eheys, moduuliverkko, kirjanmerkin liitettävyys | 12 |
-| `test/interaction.test.mjs` | Pudotus, välilehdet, tavoite, kevyt muoto, vioittuneet | 13 |
-| `test/compact.test.mjs` | Kevyt muoto: riittävyys GPX:ään verrattuna, kelvoton data | 17 |
+| `test/assets.test.mjs` | Sivujen eheys, moduuliverkko, kirjanmerkin liitettävyys | 13 |
+| `test/interaction.test.mjs` | Pudotus, välilehdet, tavoite, kevyen tallennus, vioittuneet | 16 |
+| `test/compact.test.mjs` | Kevyt muoto: riittävyys GPX:ään verrattuna, tallennus, kelvoton data | 21 |
 | `test/hostile.test.mjs` | Vihamielinen ja vioittunut GPX: XSS, XXE, ReDoS, NaN, kaatumiset | 15 |
-| | **Yhteensä** | **251** |
+| | **Yhteensä** | **259** |
 
 Kattavuus lähdekoodista: **rivit 94 %, haaraumat 94 %, funktiot 96 %**. Kattamatta jää
 export-skriptin selainliima (JSZip-lataus ja tiedoston tallennus), jota ei voi ajaa Nodessa.
