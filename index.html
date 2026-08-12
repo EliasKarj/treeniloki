@@ -13,15 +13,14 @@
     <header class="hd"><span class="brand">TREENI<b>LOKI</b></span><span id="hd-meta" class="lbl"></span></header>
     <div id="drop" class="drop">⤢ Raahaa GPX-tiedostot tähän — tai <label class="pick">valitse<input id="file" type="file" accept=".gpx" multiple hidden></label></div>
     <details class="help">
-      <summary>Mistä GPX-tiedostot? · Sports Tracker -export</summary>
+      <summary>Mistä GPX-tiedostot? · Sports Tracker -vienti</summary>
       <ol>
+        <li>Avaa <a href="export.html"><b>vientisivu</b></a> ja raahaa painike kirjanmerkkipalkkiin — tämä tehdään vain kerran.</li>
         <li>Kirjaudu <a href="https://www.sports-tracker.com" target="_blank" rel="noopener">sports-tracker.com</a>iin.</li>
-        <li>Avaa selaimen kehittäjätyökalut → <b>Console</b> (F12).</li>
-        <li>Liitä koko <code>tools/sports-tracker-export.js</code>-skriptin sisältö ja paina Enter.</li>
-        <li>Skripti lataa koko treenihistoriasi yhtenä <code>sports-tracker-export-*.zip</code>-pakettina.</li>
-        <li>Pura zip ja <b>raahaa GPX-tiedostot</b> yllä olevaan pudotusalueeseen.</li>
+        <li>Klikkaa kirjanmerkkiä ja valitse kansio — treenit tallentuvat sinne suoraan.</li>
+        <li><b>Raahaa GPX-tiedostot</b> yllä olevaan pudotusalueeseen.</li>
       </ol>
-      <p class="hint">Kaikki tapahtuu selaimessasi — mitään ei ladata palvelimelle. Export-skripti käyttää olemassa olevaa Sports Tracker -sessiotasi, ei salasanaa.</p>
+      <p class="hint">Kaikki tapahtuu selaimessasi — mitään ei ladata palvelimelle. Vienti käyttää olemassa olevaa Sports Tracker -sessiotasi, ei salasanaa, eikä sessiotunniste poistu selaimesta.</p>
     </details>
     <div id="verdict" class="verdict"></div>
     <nav id="tabs">

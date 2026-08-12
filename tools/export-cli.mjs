@@ -23,10 +23,9 @@ import { join } from "node:path";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
-// Selainskripti on IIFE joka käynnistyy itse vain kun `window` on olemassa,
-// joten sen requiroiminen Nodessa on turvallista ja antaa samat, jo testatut
-// haku- ja uudelleenyritysfunktiot.
-const { listAllWorkouts, fetchGpx, buildFilename } = require("./sports-tracker-export.js");
+// Jaettu ydin: samat haku- ja uudelleenyritysfunktiot joita selaimen
+// kirjanmerkkipainike käyttää. Ydin ei käynnistä mitään itsestään.
+const { listAllWorkouts, downloadAll, buildFilename } = require("./core.js");
 
 const DEFAULT_OUT = "./gpx-export";
 const DEFAULT_THROTTLE_MS = 150;
@@ -128,43 +127,30 @@ export async function exportAll({
   let workouts = await listAllWorkouts(fetchImpl, headers);
   if (limit > 0) workouts = workouts.slice(0, limit);
 
+  // Jatkaminen on pelkkä hakemistolistaus: valmis tiedosto tarkoittaa valmista
+  // treeniä. `.part`-tiedostot jäävät ulkopuolelle, joten kesken katkennut
+  // kirjoitus haetaan uudelleen.
   const onDisk = new Set((await readdir(outDir)).filter((f) => f.endsWith(".gpx")));
-  const planned = workouts.map((w) => ({ workout: w, name: buildFilename(w) }));
-  const todo = force ? planned : planned.filter((p) => !onDisk.has(p.name));
+  const alreadyOnDisk = force ? 0 : workouts.filter((w) => onDisk.has(buildFilename(w))).length;
 
-  log.log(`Löytyi ${workouts.length} treeniä. Levyllä jo ${workouts.length - todo.length}, haetaan ${todo.length}.`);
+  log.log(`Löytyi ${workouts.length} treeniä. Levyllä jo ${alreadyOnDisk}, haetaan ${workouts.length - alreadyOnDisk}.`);
 
-  const summary = {
+  const result = await downloadAll(workouts, fetchImpl, headers, {
+    throttleMs,
+    sleepImpl,
+    log,
+    shouldSkip: force ? null : (name) => onDisk.has(name),
+    onFile: (name, gpx) => writeAtomic(outDir, name, gpx),
+  });
+
+  return {
     total: workouts.length,
-    alreadyOnDisk: workouts.length - todo.length,
-    downloaded: 0,
-    skippedNoTrack: 0,
-    failed: [],
-    byActivity: {},
+    alreadyOnDisk: result.skippedExisting,
+    downloaded: result.downloaded,
+    skippedNoTrack: result.skipped,
+    failed: result.failedKeys,
+    byActivity: result.byActivity,
   };
-
-  for (let i = 0; i < todo.length; i++) {
-    const { workout, name } = todo[i];
-    summary.byActivity[workout.activityId] = (summary.byActivity[workout.activityId] || 0) + 1;
-    const progress = `${i + 1} / ${todo.length}`;
-    try {
-      const gpx = await fetchGpx(workout.workoutKey, fetchImpl, headers, sleepImpl);
-      if (gpx) {
-        await writeAtomic(outDir, name, gpx);
-        summary.downloaded++;
-        log.log(`${progress}  ${name}`);
-      } else {
-        summary.skippedNoTrack++;
-        log.log(`${progress}  (ohitettu — ei reittiä)`);
-      }
-    } catch (e) {
-      summary.failed.push(workout.workoutKey);
-      log.warn(`${progress}  (VIRHE — ohitettu: ${e.message})`);
-    }
-    await sleepImpl(throttleMs);
-  }
-
-  return summary;
 }
 
 /** Tulosta loppuyhteenveto ja palauta prosessin paluuarvo. */

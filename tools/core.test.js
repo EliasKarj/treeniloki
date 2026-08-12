@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const {
   activityName, formatDate, buildFilename, listAllWorkouts, fetchGpx, downloadAll, resumeOffset,
   authHeaders,
-} = require("./sports-tracker-export.js");
+} = require("./core.js");
 
 /** Console stand-in so the loop's progress output does not pollute test output. */
 const quiet = () => {
@@ -179,7 +179,10 @@ test("downloadAll logs progress against the full total, not the remaining slice"
   const log = quiet();
   const fakeFetch = async (url) => ({ ok: true, text: async () => gpxFor(url.split("/").pop()) });
   await downloadAll(workoutList(10), fakeFetch, {}, fast({ startFrom: 7, log }));
-  assert.deepEqual(log.lines.log, ["8 / 10", "9 / 10", "10 / 10"]);
+  assert.deepEqual(
+    log.lines.log.map((l) => l.split("  ")[0]),
+    ["8 / 10", "9 / 10", "10 / 10"],
+  );
 });
 
 test("downloadAll counts activities even for workouts that fail", async () => {
@@ -199,7 +202,10 @@ test("an empty history is a no-op, not an error", async () => {
   const res = await downloadAll([], async () => {
     throw new Error("should not be called");
   }, {}, fast());
-  assert.deepEqual(res, { files: [], byActivity: {}, failedKeys: [], skipped: 0 });
+  assert.deepEqual(res, {
+    files: [], byActivity: {}, failedKeys: [],
+    skipped: 0, skippedExisting: 0, downloaded: 0, cancelled: false,
+  });
 });
 
 // ---- resumeOffset ----
@@ -229,4 +235,68 @@ test("authHeaders explains what to do when the user is not logged in", () => {
   const empty = { getItem: () => null };
   assert.throws(() => authHeaders(empty), /kirjaudu sisään/);
   assert.throws(() => authHeaders(null), /Ei sessionkeytä/);
+});
+
+// ---- downloadAll: onFile / shouldSkip / onProgress / isCancelled ----
+
+test("onFile receives each GPX instead of accumulating it in memory", async () => {
+  const fakeFetch = async (url) => ({ ok: true, text: async () => gpxFor(url.split("/").pop()) });
+  const written = [];
+  const res = await downloadAll(workoutList(4), fakeFetch, {}, fast({
+    onFile: async (name, gpx) => { written.push(name); assert.match(gpx, /<trkpt/); },
+  }));
+  assert.equal(written.length, 4);
+  assert.deepEqual(res.files, [], "nothing may be retained when onFile is given");
+  assert.equal(res.downloaded, 4);
+});
+
+test("shouldSkip avoids the network entirely for workouts already saved", async () => {
+  const seen = [];
+  const fakeFetch = async (url) => {
+    const key = url.split("/").pop();
+    if (!url.includes("/workouts?")) seen.push(key);
+    return { ok: true, text: async () => gpxFor(key) };
+  };
+  const done = new Set(["2024-01-01_running_k0.gpx", "2024-01-01_running_k2.gpx"]);
+  const res = await downloadAll(workoutList(4), fakeFetch, {}, fast({
+    shouldSkip: (name) => done.has(name),
+    onFile: async () => {},
+  }));
+  assert.deepEqual(seen, ["k1", "k3"]);
+  assert.equal(res.skippedExisting, 2);
+  assert.equal(res.downloaded, 2);
+});
+
+test("onProgress reports one event per workout with its outcome", async () => {
+  const fakeFetch = async (url) => {
+    const key = url.split("/").pop();
+    if (key === "k1") return { ok: true, text: async () => "<gpx></gpx>" };
+    if (key === "k2") throw new Error("drop");
+    return { ok: true, text: async () => gpxFor(key) };
+  };
+  const events = [];
+  await downloadAll(workoutList(4), fakeFetch, {}, fast({
+    onProgress: (p) => events.push(p.state),
+  }));
+  assert.deepEqual(events, ["saved", "notrack", "failed", "saved"]);
+});
+
+test("isCancelled stops the run cleanly and reports what was done", async () => {
+  const fakeFetch = async (url) => ({ ok: true, text: async () => gpxFor(url.split("/").pop()) });
+  let seen = 0;
+  const res = await downloadAll(workoutList(10), fakeFetch, {}, fast({
+    onProgress: () => { seen++; },
+    isCancelled: () => seen >= 3,
+  }));
+  assert.equal(res.cancelled, true);
+  assert.equal(res.downloaded, 3, "work done before the stop is kept");
+});
+
+test("byActivity counts the whole history, including workouts already saved", async () => {
+  const fakeFetch = async (url) => ({ ok: true, text: async () => gpxFor(url.split("/").pop()) });
+  const res = await downloadAll(workoutList(4), fakeFetch, {}, fast({
+    shouldSkip: (name) => name.includes("k0"),
+    onFile: async () => {},
+  }));
+  assert.deepEqual(res.byActivity, { 1: 4 });
 });

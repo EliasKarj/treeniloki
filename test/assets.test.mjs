@@ -89,10 +89,37 @@ test("no analysis module reaches into the DOM", async () => {
   }
 });
 
-test("the export tool stays a single self-contained file", async () => {
-  const source = await read("tools/sports-tracker-export.js");
-  // It is pasted into a browser console, so it cannot import anything.
-  assert.doesNotMatch(source, /(?:^|\n)\s*import\s/, "the console script must not use import");
-  assert.doesNotMatch(source, /\brequire\(/, "the console script must not use require");
-  assert.match(source, /module\.exports/, "but it must still expose its helpers to the tests");
+test("the bookmarklet sources stay self-contained", async () => {
+  // export.html concatenates these two into a javascript: URL. Anything they
+  // pulled in at runtime would either break (no module loader in a bookmarklet)
+  // or be blocked by the host page's CSP.
+  for (const file of ["tools/core.js", "tools/export-overlay.js"]) {
+    const source = await read(file);
+    assert.doesNotMatch(source, /(?:^|\n)\s*import\s/, `${file} must not use import`);
+    assert.doesNotMatch(source, /(?:^|\n)\s*(?:const|let|var).*\brequire\(/, `${file} must not use require`);
+  }
+});
+
+test("core.js works in both Node and a bare browser page", async () => {
+  const source = await read("tools/core.js");
+  assert.match(source, /module\.exports = core/, "Node needs the CommonJS export");
+  assert.match(source, /root\.TreenilokiCore = core/, "the bookmarklet needs the global");
+  // The shared core is transport-only; anything DOM-shaped belongs in the overlay.
+  assert.doesNotMatch(source, /\bdocument\.|showDirectoryPicker/, "core.js must stay DOM-free");
+});
+
+test("the overlay uses the shared core rather than its own copy of the fetch logic", async () => {
+  const source = await read("tools/export-overlay.js");
+  assert.match(source, /window\.TreenilokiCore/, "the overlay must read the shared core");
+  assert.doesNotMatch(source, /apiserver\/v1/, "API paths belong to core.js alone");
+});
+
+test("export.html builds its bookmarklet from files that exist", async () => {
+  const html = await read("export.html");
+  const fetched = [...html.matchAll(/fetch\("([^"]+)"\)/g)].map((m) => m[1]);
+  assert.ok(fetched.length >= 2, "expected the page to assemble the bookmarklet from sources");
+  for (const ref of fetched) {
+    assert.ok(await exists(ref), `export.html fetches a missing file: ${ref}`);
+  }
+  assert.match(html, /javascript:/, "the bookmarklet needs a javascript: URL");
 });

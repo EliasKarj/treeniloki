@@ -80,30 +80,56 @@ painamalla `Ctrl+C` terminaalissa.
 
 ## Mistä GPX-tiedostot?
 
-Sports Trackerissa ei ole joukkovientiä. Repo sisältää kaksi vientityökalua, jotka molemmat
-käyttävät olemassa olevaa kirjautumistasi eivätkä salasanaa. **Valitse historian pituuden
-mukaan:**
+Sports Trackerissa ei ole joukkovientiä. Treenilokissa on siihen **kirjanmerkkipainike**:
+raahaat sen kerran palkkiin, ja sen jälkeen vienti on yhden klikkauksen päässä. Konsolia ei
+tarvita.
 
-| Historia | Työkalu | Miksi |
-|----------|---------|-------|
-| alle ~500 treeniä | Konsoliskripti | Ei asennusta, liitä ja aja |
-| yli ~500 treeniä, tai heikko kone | **Node-CLI** | Vakio muistinkulutus, jatkuu keskeytyksestä itsestään |
+### Näin se toimii
 
-Tiedostot nimetään molemmissa muotoon `YYYY-MM-DD_<laji>_<workoutKey>.gpx`. Ilman GPS-reittiä
-olevat treenit (käsin lisätyt, sisäjuoksut) ohitetaan. Yhteenveto tulostaa löydetyt
-`activityId`:t — voit lisätä ne `ACTIVITY_NAMES`-listaan saadaksesi selkeämmät lajinimet.
+1. Avaa **[vientisivu](https://eliaskarj.github.io/treeniloki/export.html)** ja raahaa painike
+   kirjanmerkkipalkkiin *(vain kerran)*
+2. Kirjaudu [sports-tracker.com](https://www.sports-tracker.com)iin
+3. **Klikkaa kirjanmerkkiä** → sivulle ilmestyy paneeli
+4. Paina "Valitse kansio ja aloita" ja seuraa edistymispalkkia
+5. Raahaa kansion GPX-tiedostot Treenilokin pudotusalueeseen
 
-### Vaihtoehto A: konsoliskripti
+Tiedostot nimetään muotoon `YYYY-MM-DD_<laji>_<workoutKey>.gpx`. Ilman GPS-reittiä olevat
+treenit (käsin lisätyt, sisäjuoksut) ohitetaan.
 
-1. Kirjaudu sisään osoitteessa <https://www.sports-tracker.com>
-2. Avaa selaimen kehittäjätyökalut → **Console** (`F12`)
-3. Liitä koko `tools/sports-tracker-export.js`-tiedoston sisältö ja paina Enter
-4. Seuraa etenemistä lokista — `sports-tracker-export-YYYY-MM-DD.zip` latautuu lopuksi
-5. Pura zip ja raahaa GPX-tiedostot Treenilokin pudotusalueeseen
+**Jos ajo katkeaa** — kone jämähtää, suljet välilehden, verkko pätkii — klikkaa kirjanmerkkiä
+uudelleen ja valitse sama kansio. Jo tallennetut ohitetaan automaattisesti.
 
-### Vaihtoehto B: Node-CLI (pitkä historia, epävakaa kone)
+> **▸ Miksi kirjanmerkki eikä konsoli:** kirjanmerkki ajetaan sivun omassa kontekstissa aivan
+> kuten konsoliin liitetty skripti, joten se pääsee käsiksi sessiotunnisteeseen. Ero on
+> käytettävyydessä: kertaluontoisen raahauksen jälkeen vienti on yksi klikkaus, eikä
+> kehittäjätyökaluja tarvitse avata koskaan.
+>
+> **▸ Miksi tunniste ei poistu selaimesta:** painike lukee tunnisteen Sports Trackerin oman
+> sivun `localStorage`sta ja lähettää sen takaisin samaan API:in, minne selaimesi lähettää sen
+> muutenkin joka pyynnössä. Uutta altistusta ei synny — toisin kuin komentorivivaihtoehdossa,
+> jossa tunniste pitäisi kopioida terminaaliin ja se päätyisi komentohistoriaan ja
+> prosessilistaukseen.
+>
+> **▸ Miksi koko koodi on kirjanmerkin sisällä:** vaihtoehto olisi ladata skripti
+> ulkopuoliselta palvelimelta, mutta silloin Sports Trackerin CSP voisi estää sen — ja sivulle
+> injektoitaisiin kolmannen osapuolen koodia. Itsenäinen kirjanmerkki (29 kt) välttää molemmat.
+>
+> **▸ Miksi suoraan kansioon:** File System Access API kirjoittaa jokaisen GPX:n heti levylle,
+> jolloin muistinkulutus ei riipu treenien määrästä. Vanha zip-tapa keräsi kaikki muistiin:
+> mitattuna 200 treeniä → 46 MB, 400 → 88 MB, 800 → 173 MB, eli tuhansilla treeneillä lähes
+> gigatavu. Sivutuotteena jatkaminen muuttui ilmaiseksi — valmis tiedosto kansiossa *on* tieto
+> siitä mikä on tehty.
 
-Hae sessiotunniste kerran selaimen konsolista sports-tracker.comissa:
+### Selaintuki
+
+Suoraan kansioon kirjoittaminen vaatii **Chromen tai Edgen**. Firefoxissa ja Safarissa painike
+toimii, mutta putoaa takaisin zip-pakettiin ja siten muistiin — se käy raskaaksi jos treenejä
+on tuhansia.
+
+### Vaihtoehto: Node-komentorivi
+
+Jos haluat ajaa viennin taustalla ilman selainta, repossa on myös CLI. Hae sessiotunniste
+kerran selaimen konsolista sports-tracker.comissa:
 
 ```js
 localStorage.getItem("sessionkey")
@@ -116,48 +142,11 @@ ST_SESSION_KEY=<avain> npm run export
 ```
 
 GPX:t ilmestyvät kansioon `./gpx-export`. Valitsimet: `--out <kansio>`, `--limit <n>`,
-`--throttle <ms>`, `--force`, `--help`.
+`--throttle <ms>`, `--force`, `--help`. Keskeytynyt ajo jatkuu ajamalla sama komento uudelleen.
 
-**Keskeytynyt ajo jatkuu ajamalla sama komento uudelleen** — levyllä jo olevat treenit
-ohitetaan, eikä mitään erillistä jatkamiskikkaa tarvita.
-
-> **▸ Miksi erillinen CLI:** konsoliversio kerää kaikki GPX:t muistiin ennen kuin pakkaa ne
-> zipiksi, joten muistinkulutus kasvaa lineaarisesti historian pituuden mukana. Mitattuna
-> 210 kt:n keskikokoisilla tiedostoilla: 200 treeniä → 46 MB, 400 → 88 MB, 800 → 173 MB.
-> Kolmella tuhannella treenillä puhutaan lähes gigatavusta, minkä päälle JSZip rakentaa
-> vielä oman kopionsa. CLI kirjoittaa jokaisen tiedoston levylle heti, jolloin lukema pysyy
-> **4 MB:ssä riippumatta treenien määrästä**.
->
-> **▸ Miksi levylle kirjoittaminen korjaa myös jatkamisen:** kun jokainen valmis treeni on
-> oma tiedostonsa, seuraava ajo näkee suoraan mitä on jo tehty. Kirjoitus tehdään ensin
-> `.part`-tiedostoon ja nimetään vasta sitten uudelleen, joten kesken kirjoituksen kuollut
-> prosessi ei jätä katkennutta tiedostoa jonka jatkaminen luulisi valmiiksi.
->
-> **▸ Miksi tämä on mahdollista:** Sports Trackerin API tunnistaa käyttäjän
-> `STTAuthorization`-otsakkeella, ei selainistuntoon sidotulla evästeellä. Haut eivät siis
-> ole sidottuja selaimeen, kunhan tunniste on mukana.
->
-> **▸ Miksi ei pilveen:** sessiotunniste on käytännössä pääsy tiliisi. Sen tallentaminen
-> esimerkiksi GitHub-secretiksi jättäisi sen sinne kunnes kirjaudut ulos, eikä hyöty omaan
-> koneeseen nähden ole sen arvoinen.
-
-### Jos konsoliskriptin ajo katkeaa kesken
-
-Yksittäiset GPX-haut yrittävät automaattisesti uudelleen verkkovirheen sattuessa (3 yritystä,
-kasvava odotus), eikä yksi epäonnistunut treeni enää kaada koko ajoa. Jos koko ajo silti
-pysähtyy — esimerkiksi kone meni lepotilaan — katso viimeinen tulostettu numero ja jatka siitä:
-
-```js
-window.TREENI_RESUME_FROM = 414;   // liitä sitten skripti uudelleen
-```
-
-Syntyvä zip sisältää tällöin vain loput treenit. Pura molemmat zipit samaan kansioon —
-tiedostonimet ovat treenikohtaisia, joten mikään ei mene päällekkäin.
-
-> **▸ Miksi uudelleenyritys vain verkkovirheelle?** Siisti HTTP-vastaus (404, 403) on
-> palvelimen todellinen vastaus — sen uudelleenyrittäminen tuottaisi saman tuloksen ja
-> hidastaisi ajoa turhaan. Poikkeuksena lentävä `fetch` sen sijaan tarkoittaa katkennutta
-> yhteyttä, joka usein korjaantuu itsestään sekunneissa.
+> **▸ Varaus:** tässä tunniste on kopioitava selaimesta terminaaliin, jolloin se päätyy
+> leikepöydälle ja mahdollisesti komentohistoriaan. Kirjanmerkki on tältä osin turvallisempi.
+> Kirjaudu ulos ja takaisin sisään ajon jälkeen, niin käytetty tunniste mitätöityy.
 
 ---
 
@@ -522,8 +511,9 @@ npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 | `test/pipeline.test.mjs` | Koko putki GPX-tekstistä valmiiseen malliin | 13 |
 | `test/interaction.test.mjs` | Tiedostojen pudotus, välilehdet, tavoitteen vaihto | 8 |
 | `test/assets.test.mjs` | `index.html`:n viittaukset ja moduuliverkko | 7 |
-| `tools/sports-tracker-export.test.js` | Konsoliskripti: uudelleenyritys, jatkaminen, virheensieto | 23 |
+| `tools/core.test.js` | Jaettu ydin: uudelleenyritys, jatkaminen, virheensieto | 28 |
 | `tools/export-cli.test.mjs` | Node-CLI: argumentit, levylle kirjoitus, jatkaminen | 17 |
+| `test/assets.test.mjs` | Myös: bookmarklet-lähteet pysyvät itsenäisinä | – |
 
 Kattavuus lähdekoodista: **rivit 94 %, haaraumat 94 %, funktiot 96 %**. Kattamatta jää
 export-skriptin selainliima (JSZip-lataus ja tiedoston tallennus), jota ei voi ajaa Nodessa.
@@ -582,9 +572,11 @@ src/
 test/
   *.test.mjs            Analyysimoduulien, renderin ja putken testit
   helpers/              DOM-stub ja GPX-fixturet (ei riippuvuuksia)
+export.html             Vientisivu: rakentaa kirjanmerkkipainikkeen
 tools/
-  sports-tracker-export.js   Konsoliskripti (selain) + sen testit
-  export-cli.mjs             Node-CLI pitkälle historialle + sen testit
+  core.js                    Jaettu ydin: API-haut, uudelleenyritys, nimeäminen
+  export-overlay.js          Kirjanmerkin käyttöliittymä (selain)
+  export-cli.mjs             Node-komentorivi
 .github/workflows/      CI: testit, kattavuus, julkaisu
 ```
 

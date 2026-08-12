@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="fi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Treeniloki · Sports Tracker -vienti</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="app/styles.css" />
+  <style>
+    .steps { counter-reset: s; list-style: none; padding: 0; margin: 0; }
+    .steps > li { counter-increment: s; position: relative; padding: 0 0 18px 42px; }
+    .steps > li::before {
+      content: counter(s); position: absolute; left: 0; top: 0;
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--accent); color: #06121a; font-weight: 800; font-size: 13px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .steps > li::after {
+      content: ""; position: absolute; left: 13px; top: 30px; bottom: 4px; width: 1px; background: var(--line);
+    }
+    .steps > li:last-child::after { display: none; }
+    .steps h3 { margin: 3px 0 6px; font-size: 14px; }
+    .steps p { margin: 0 0 8px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .bm {
+      display: inline-block; background: var(--accent); color: #06121a; text-decoration: none;
+      font-weight: 800; font-size: 14px; padding: 11px 20px; border-radius: 8px; cursor: grab;
+      border: none;
+    }
+    .bm:active { cursor: grabbing; }
+    .bmwrap { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 4px 0 10px; }
+    .drag { color: var(--muted); font-size: 12px; }
+    .minibtn {
+      background: none; border: 1px solid var(--line); color: var(--muted);
+      border-radius: 7px; padding: 8px 12px; font: inherit; font-size: 12px; cursor: pointer;
+    }
+    .minibtn:hover { background: #131c26; color: var(--fg); }
+    .note { border-left: 3px solid var(--accent); background: #0d141c; padding: 10px 12px; border-radius: 0 8px 8px 0; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+    .note.warn { border-left-color: var(--warn); }
+    .back { color: var(--accent); font-size: 13px; text-decoration: none; }
+    .back:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <main id="app">
+    <header class="hd">
+      <span class="brand">TREENI<b>LOKI</b></span>
+      <a class="back" href="index.html">← analyysiin</a>
+    </header>
+
+    <div class="panel">
+      <div class="lbl" style="margin-bottom:10px">Sports Tracker → GPX</div>
+      <p class="sub" style="margin-top:0">
+        Sports Trackerissa ei ole joukkovientiä. Tämä painike lataa koko treenihistoriasi
+        GPX-tiedostoina suoraan valitsemaasi kansioon. Kaikki tapahtuu selaimessasi —
+        <b>salasanaasi ei kysytä eikä mitään lähetetä ulkopuolelle.</b>
+      </p>
+    </div>
+
+    <div class="panel">
+      <ol class="steps">
+        <li>
+          <h3>Raahaa painike kirjanmerkkipalkkiin</h3>
+          <p>Tämä tehdään vain kerran. Jos kirjanmerkkipalkki ei näy, avaa se näppäinyhdistelmällä
+            <b>Ctrl+Shift+B</b> (Windows) tai <b>⌘+Shift+B</b> (Mac).</p>
+          <div class="bmwrap">
+            <a class="bm" id="bm" href="#" draggable="true">📥 Vie Treenilokiin</a>
+            <span class="drag" id="bmsize">rakennetaan…</span>
+          </div>
+          <button class="minibtn" id="copybm">Kopioi kirjanmerkin osoite</button>
+        </li>
+        <li>
+          <h3>Kirjaudu Sports Trackeriin</h3>
+          <p>Avaa <a href="https://www.sports-tracker.com" target="_blank" rel="noopener">sports-tracker.com</a>
+            ja kirjaudu sisään normaalisti.</p>
+        </li>
+        <li>
+          <h3>Klikkaa kirjanmerkkiä</h3>
+          <p>Sivun oikeaan yläkulmaan ilmestyy paneeli. Paina <b>”Valitse kansio ja aloita”</b>,
+            valitse tyhjä kansio, ja seuraa edistymispalkkia.</p>
+          <p>Jos ajo katkeaa — kone jämähtää, suljet välilehden, verkko pätkii — <b>klikkaa
+            kirjanmerkkiä uudelleen ja valitse sama kansio.</b> Jo tallennetut treenit ohitetaan
+            automaattisesti.</p>
+        </li>
+        <li>
+          <h3>Raahaa tiedostot analyysiin</h3>
+          <p>Avaa <a href="index.html">Treenilokin etusivu</a> ja raahaa kansion GPX-tiedostot
+            pudotusalueeseen.</p>
+        </li>
+      </ol>
+    </div>
+
+    <div class="panel">
+      <div class="lbl" style="margin-bottom:8px">Tietoturva</div>
+      <div class="note">
+        <b>Sessiotunnisteesi ei poistu selaimesta.</b> Painike lukee sen Sports Trackerin oman
+        sivun sisältä ja lähettää sen takaisin samaan paikkaan, minne selaimesi lähettää sen
+        muutenkin joka pyynnössä. Sinun ei tarvitse kopioida tunnistetta mihinkään, eikä se
+        päädy komentohistoriaan tai leikepöydälle.
+      </div>
+      <div class="note">
+        <b>Painike ei lataa koodia mistään.</b> Koko skripti on kirjanmerkin sisällä, joten
+        Sports Trackerin sivulle ei injektoida kolmannen osapuolen koodia eikä mitään haeta
+        ulkopuoliselta palvelimelta.
+      </div>
+      <p class="sub">
+        Halutessasi voit kirjautua ulos ja takaisin sisään viennin jälkeen — se mitätöi
+        käytetyn sessiotunnisteen.
+      </p>
+    </div>
+
+    <div class="panel">
+      <div class="lbl" style="margin-bottom:8px">Selaintuki</div>
+      <p class="sub" style="margin-top:0">
+        Suoraan kansioon kirjoittaminen vaatii <b>Chromen tai Edgen</b>. Firefoxissa ja
+        Safarissa painike toimii, mutta putoaa takaisin zip-pakettiin: se kerää tiedostot
+        muistiin, mikä voi käydä raskaaksi jos treenejä on tuhansia.
+      </p>
+      <details class="help">
+        <summary>Vaihtoehto ilman kirjanmerkkiä · konsoli</summary>
+        <p class="hint">Jos et halua käyttää kirjanmerkkiä, sama skripti toimii liittämällä se
+          selaimen konsoliin sports-tracker.comissa (F12 → Console).</p>
+        <button class="minibtn" id="copyraw">Kopioi skripti leikepöydälle</button>
+      </details>
+      <details class="help">
+        <summary>Pitkä historia · Node-komentorivi</summary>
+        <p class="hint">Jos historiaa on tuhansia treenejä ja haluat ajaa viennin taustalla,
+          repossa on myös Node-CLI. Se vaatii sessiotunnisteen kopioimisen kerran —
+          ks. README:n ohje <code>npm run export</code>.</p>
+      </details>
+    </div>
+
+    <p class="sub" id="err" style="display:none"></p>
+  </main>
+
+  <script>
+    (async function () {
+      const bm = document.getElementById("bm");
+      const size = document.getElementById("bmsize");
+      const err = document.getElementById("err");
+
+      function fail(msg) {
+        size.textContent = "";
+        err.style.display = "block";
+        err.textContent = msg;
+        bm.removeAttribute("href");
+        bm.style.opacity = ".4";
+        bm.style.cursor = "not-allowed";
+      }
+
+      if (location.protocol === "file:") {
+        fail("Avaa tämä sivu paikallisen palvelimen kautta (esim. python3 -m http.server 8000), " +
+             "tai käytä julkaistua versiota. file:// estää skriptin lukemisen.");
+        return;
+      }
+
+      let source;
+      try {
+        // Kirjanmerkki rakennetaan lähdetiedostoista latautuessa, joten se pysyy
+        // automaattisesti ajan tasalla ilman erillistä käännösvaihetta.
+        const [core, overlay] = await Promise.all([
+          fetch("tools/core.js").then((r) => { if (!r.ok) throw new Error("core.js " + r.status); return r.text(); }),
+          fetch("tools/export-overlay.js").then((r) => { if (!r.ok) throw new Error("export-overlay.js " + r.status); return r.text(); }),
+        ]);
+        source = core + "\n" + overlay;
+      } catch (e) {
+        fail("Skriptin lataus epäonnistui: " + e.message);
+        return;
+      }
+
+      const href = "javascript:" + encodeURIComponent("(function(){" + source + "\n})();void 0;");
+      bm.setAttribute("href", href);
+      size.textContent = "↖ raahaa tämä kirjanmerkkipalkkiin (" + Math.round(href.length / 1024) + " kt)";
+
+      bm.addEventListener("click", (e) => {
+        e.preventDefault();
+        size.textContent = "↖ raahaa painike palkkiin — klikkaus tällä sivulla ei tee mitään";
+      });
+
+      async function copy(text, btn, done) {
+        try {
+          await navigator.clipboard.writeText(text);
+          const was = btn.textContent;
+          btn.textContent = done;
+          setTimeout(() => { btn.textContent = was; }, 1800);
+        } catch {
+          btn.textContent = "Kopiointi ei onnistunut";
+        }
+      }
+      document.getElementById("copybm")
+        .addEventListener("click", (e) => copy(href, e.target, "Kopioitu ✓"));
+      document.getElementById("copyraw")
+        .addEventListener("click", (e) => copy(source, e.target, "Kopioitu ✓"));
+    })();
+  </script>
+</body>
+</html>
