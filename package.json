@@ -3,7 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "description": "Sports Tracker export + GPX workout analyzer (client-side).",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "test": "node --test tools/sports-tracker-export.test.js"
+    "test": "node --test \"test/*.test.mjs\" \"tools/*.test.js\"",
+    "test:watch": "node --test --watch \"test/*.test.mjs\" \"tools/*.test.js\"",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-exclude=\"test/**\" --test-coverage-exclude=\"tools/*.test.js\" --test-coverage-lines=90 --test-coverage-branches=90 --test-coverage-functions=90 \"test/*.test.mjs\" \"tools/*.test.js\""
   }
 }

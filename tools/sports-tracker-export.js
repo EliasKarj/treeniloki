@@ -62,8 +62,8 @@
     }
   }
 
-  function authHeaders() {
-    const key = typeof localStorage !== "undefined" && localStorage.getItem("sessionkey");
+  function authHeaders(store = typeof localStorage !== "undefined" ? localStorage : null) {
+    const key = store && store.getItem("sessionkey");
     if (!key) throw new Error("Ei sessionkeytä — kirjaudu sisään sports-tracker.comiin ja aja uudelleen.");
     return { STTAuthorization: key };
   }
@@ -92,6 +92,42 @@
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+  /**
+   * Fetch GPX for every workout from `startFrom` onwards.
+   *
+   * Extracted from run() so the loop that survives a partial failure can be
+   * unit-tested without a browser: this is the part that used to abort the
+   * whole export on a single dropped connection. One workout failing must
+   * never end the run — it lands in `failedKeys` and the loop continues.
+   */
+  async function downloadAll(workouts, fetchImpl, headers, opts = {}) {
+    const { startFrom = 0, sleepImpl = sleep, throttleMs = THROTTLE_MS, log = console } = opts;
+    const files = [];
+    const byActivity = {};
+    const failedKeys = [];
+    let skipped = 0;
+    for (let i = startFrom; i < workouts.length; i++) {
+      const w = workouts[i];
+      byActivity[w.activityId] = (byActivity[w.activityId] || 0) + 1;
+      try {
+        const gpx = await fetchGpx(w.workoutKey, fetchImpl, headers, sleepImpl);
+        if (gpx) files.push({ name: buildFilename(w), gpx });
+        else skipped++;
+        log.log(`${i + 1} / ${workouts.length}${gpx ? "" : "  (ohitettu — ei reittiä)"}`);
+      } catch (e) {
+        failedKeys.push(w.workoutKey);
+        log.warn(`${i + 1} / ${workouts.length}  (VIRHE — ohitettu: ${e.message})`);
+      }
+      await sleepImpl(throttleMs);
+    }
+    return { files, byActivity, failedKeys, skipped };
+  }
+
+  /** Where to resume from, read from the window flag. Never negative. */
+  function resumeOffset(win) {
+    return Math.max(0, Math.trunc(Number(win && win.TREENI_RESUME_FROM)) || 0);
+  }
+
   async function run() {
     const headers = authHeaders();
     console.log("Haetaan treenilista…");
@@ -102,29 +138,12 @@
     // voit jatkaa siitä mihin jäit: aseta konsolissa esim. window.TREENI_RESUME_FROM = 414
     // ennen skriptin liittämistä uudelleen. Huom: zip sisältää silloin vain jäljellä
     // olevat treenit — pura molemmat zipit samaan kansioon (tiedostonimet ovat uniikkeja).
-    const startFrom = Math.max(0, Number(window.TREENI_RESUME_FROM) || 0);
+    const startFrom = resumeOffset(window);
     if (startFrom > 0) {
       console.log(`window.TREENI_RESUME_FROM=${startFrom} — jatketaan kohdasta ${startFrom + 1}/${workouts.length}.`);
     }
 
-    const files = [];
-    const byActivity = {};
-    const failedKeys = [];
-    let skipped = 0;
-    for (let i = startFrom; i < workouts.length; i++) {
-      const w = workouts[i];
-      byActivity[w.activityId] = (byActivity[w.activityId] || 0) + 1;
-      try {
-        const gpx = await fetchGpx(w.workoutKey, fetch, headers);
-        if (gpx) files.push({ name: buildFilename(w), gpx });
-        else skipped++;
-        console.log(`${i + 1} / ${workouts.length}${gpx ? "" : "  (ohitettu — ei reittiä)"}`);
-      } catch (e) {
-        failedKeys.push(w.workoutKey);
-        console.warn(`${i + 1} / ${workouts.length}  (VIRHE — ohitettu: ${e.message})`);
-      }
-      await sleep(THROTTLE_MS);
-    }
+    const { files, byActivity, failedKeys, skipped } = await downloadAll(workouts, fetch, headers, { startFrom });
 
     if (failedKeys.length) {
       console.warn(`${failedKeys.length} treeniä epäonnistui toistuvien verkkovirheiden takia:`, failedKeys);
@@ -155,5 +174,5 @@
   if (typeof window !== "undefined") run();
 
   // ---- Node test hook (ignored in the browser) ----
-  try { module.exports = { activityName, formatDate, buildFilename, listAllWorkouts, fetchGpx }; } catch (e) { /* browser: no module */ }
+  try { module.exports = { activityName, formatDate, buildFilename, listAllWorkouts, fetchGpx, downloadAll, resumeOffset, authHeaders }; } catch (e) { /* browser: no module */ }
 })();

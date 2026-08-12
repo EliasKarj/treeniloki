@@ -460,17 +460,51 @@ Testit vaativat **Node.js 22+**. Riippuvuuksia ei tarvitse asentaa — kaikki k�
 sisäänrakennettua `node:test`-kirjastoa.
 
 ```bash
-npm test                      # export-skriptin testit (10 kpl)
-node --test test/*.test.mjs   # analyysilogiikan testit (58 kpl)
+npm test              # koko testisarja, 170 testiä
+npm run test:watch    # ajaa uudelleen kun tiedostot muuttuvat
+npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 ```
 
-> [!NOTE]
-> `npm test` ajaa tällä hetkellä vain `tools/`-kansion testit. Analyysimoduulien testit
-> (`test/*.test.mjs`) pitää ajaa erikseen yllä olevalla komennolla.
+### Mitä testataan
+
+| Testitiedosto | Kohde | Testejä |
+|---------------|-------|---------|
+| `test/workout · aggregate · breaks · spikeRisk · trainingLoad · detraining · intensity · hrZones · vo2max · goals · coaching · verdict · gpx` | Analyysimoduulit yksitellen | 58 |
+| `test/edges.test.mjs` | Raja-arvot ja poikkeustilanteet — jokainen kynnys molemmilta puolilta | 38 |
+| `test/render.test.mjs` | `app/render/*` — kortit, taulukko, kaaviot, tavoitepainikkeet | 23 |
+| `test/pipeline.test.mjs` | Koko putki GPX-tekstistä valmiiseen malliin | 13 |
+| `test/interaction.test.mjs` | Tiedostojen pudotus, välilehdet, tavoitteen vaihto | 8 |
+| `test/assets.test.mjs` | `index.html`:n viittaukset ja moduuliverkko | 7 |
+| `tools/sports-tracker-export.test.js` | Export-skripti: uudelleenyritys, jatkaminen, virheensieto | 23 |
+
+Kattavuus lähdekoodista: **rivit 94 %, haaraumat 94 %, funktiot 96 %**. Kattamatta jää
+export-skriptin selainliima (JSZip-lataus ja tiedoston tallennus), jota ei voi ajaa Nodessa.
 
 > **▸ Miksi laskenta on eriytetty piirtämisestä:** `src/analysis/`-moduulit ovat puhtaita
 > funktioita ilman DOM-riippuvuuksia, joten jokainen raja-arvo yllä on testattavissa
 > suoraan Nodessa ilman selainta. Piirtokerros `app/render/` vain esittää valmiin mallin.
+> Tämän rajan säilyminen on itsessään testattu: `assets.test.mjs` kaatuu, jos jokin
+> `src/`-moduuli alkaa koskea `document`- tai `window`-olioon.
+>
+> **▸ Miksi DOM-stub eikä jsdom:** projektin lupaus on nolla riippuvuutta. `test/helpers/dom.mjs`
+> toteuttaa käsin juuri ne DOM-rajapinnat joita `app/` oikeasti käyttää — mitään muuta se ei
+> osaa, jolloin testaamaton DOM-kutsu kaatuu näkyvästi sen sijaan että menisi läpi liian
+> kyvykästä jäljitelmää vasten.
+>
+> **▸ Miksi päästä päähän -testit yksikkötestien lisäksi:** jokainen moduuli voi läpäistä omat
+> testinsä käsin kirjoitettua mallia vasten, ja silti kenttä voi olla nimetty uudelleen
+> moduulien välillä. `pipeline.test.mjs` importoi `app/main.mjs`:n itsensä, joten sovelluksen
+> oma johdotus on se mitä testataan.
+
+### CI
+
+`.github/workflows/ci.yml` ajaa kolme työtä jokaisesta pushista ja pull requestista:
+
+| Työ | Sisältö |
+|-----|---------|
+| **Testit** | Koko sarja Node 22:lla ja 24:llä rinnakkain |
+| **Kattavuus** | Sama sarja kynnysarvoilla — alle 90 % kaataa buildin |
+| **Julkaisu** | GitHub Pages, vain `main`-haarasta ja vasta kun molemmat yllä ovat vihreitä |
 
 ---
 

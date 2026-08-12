@@ -6,25 +6,67 @@ on:
   pull_request:
     branches: [main]
 
+# A newer push supersedes an in-flight run on the same ref, so pushes in quick
+# succession do not queue up behind each other.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   test:
+    name: Testit (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      # Report every version's result; one failing leg should not hide whether
+      # the others pass.
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      # Nothing to install — the suite runs on node:test alone.
+      - name: Aja koko testisarja
+        run: npm test
+
+  coverage:
+    name: Kattavuus
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 22 }
-      - run: npm test
+        with:
+          node-version: 22
+      # Fails the build if line, branch or function coverage drops below 90 %.
+      # Test files are excluded from the measurement so the number reflects
+      # covered production code, not the tests covering themselves.
+      - name: Aja testit kattavuuskynnyksillä
+        run: npm run test:coverage
 
   deploy:
-    needs: test
+    name: Julkaise GitHub Pagesiin
+    # Gated on the full suite across both Node versions and on the coverage
+    # floor — previously the deploy only waited for a single test file.
+    needs: [test, coverage]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
-    permissions: { contents: read, pages: write, id-token: write }
-    environment: { name: github-pages, url: "${{ steps.deployment.outputs.page_url }}" }
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
-        with: { path: "." }
+        with:
+          path: "."
       - id: deployment
         uses: actions/deploy-pages@v4
