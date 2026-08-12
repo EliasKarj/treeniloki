@@ -60,13 +60,18 @@ test("listAllWorkouts throws on a non-ok response", async () => {
 
 test("fetchGpx returns the GPX text when it has trackpoints", async () => {
   const fakeFetch = async () => ({ ok: true, text: async () => "<gpx><trkpt lat=\"1\" lon=\"2\"/></gpx>" });
-  const gpx = await fetchGpx("abc", fakeFetch, {});
-  assert.match(gpx, /<trkpt/);
+  const res = await fetchGpx("abc", fakeFetch, {});
+  assert.equal(res.reason, "ok");
+  assert.match(res.gpx, /<trkpt/);
 });
 
-test("fetchGpx returns null for non-ok or track-less GPX", async () => {
-  assert.equal(await fetchGpx("x", async () => ({ ok: false, status: 404 }), {}), null);
-  assert.equal(await fetchGpx("y", async () => ({ ok: true, text: async () => "<gpx></gpx>" }), {}), null);
+test("fetchGpx tells a track-less workout apart from an HTTP error", async () => {
+  // Ratkaiseva ero: "notrack" on pysyvä tosiasia treenistä, HTTP-virhe ei ole.
+  const http = await fetchGpx("x", async () => ({ ok: false, status: 403 }), {});
+  assert.deepEqual(http, { gpx: null, reason: "http", status: 403 });
+
+  const noTrack = await fetchGpx("y", async () => ({ ok: true, text: async () => "<gpx></gpx>" }), {});
+  assert.deepEqual(noTrack, { gpx: null, reason: "notrack" });
 });
 
 test("fetchGpx does not retry a clean non-ok response", async () => {
@@ -75,8 +80,8 @@ test("fetchGpx does not retry a clean non-ok response", async () => {
     calls++;
     return { ok: false, status: 403 };
   };
-  const gpx = await fetchGpx("x", fakeFetch, {}, async () => {});
-  assert.equal(gpx, null);
+  const res = await fetchGpx("x", fakeFetch, {}, async () => {});
+  assert.equal(res.reason, "http");
   assert.equal(calls, 1);
 });
 
@@ -87,8 +92,8 @@ test("fetchGpx retries a thrown network error and succeeds once the network reco
     if (calls < 2) throw new Error("network drop");
     return { ok: true, text: async () => "<gpx><trkpt lat=\"1\" lon=\"2\"/></gpx>" };
   };
-  const gpx = await fetchGpx("x", fakeFetch, {}, async () => {});
-  assert.match(gpx, /<trkpt/);
+  const res = await fetchGpx("x", fakeFetch, {}, async () => {});
+  assert.match(res.gpx, /<trkpt/);
   assert.equal(calls, 2);
 });
 
@@ -111,6 +116,25 @@ test("downloadAll collects a GPX file for every workout that has one", async () 
   assert.equal(res.files[0].name, "2024-01-01_running_k0.gpx");
 });
 
+test("an HTTP error is never remembered as track-less — an expired session must not poison the list", async () => {
+  // Regressio: aiemmin sekä 403 että reidittömyys palauttivat nullin, joten
+  // vanhentunut sessio olisi kirjannut koko loppuhistorian pysyvästi
+  // ohitettavaksi ja treenit olisivat kadonneet hiljaa.
+  const fakeFetch = async (url) => {
+    const key = url.split("/").pop();
+    if (key === "k0") return { ok: true, text: async () => "<gpx></gpx>" }; // aito reiditön
+    return { ok: false, status: 403 };                                       // sessio vanhentui
+  };
+  const noted = [];
+  const res = await downloadAll(workoutList(5), fakeFetch, {}, fast({
+    onNoTrack: async (w) => noted.push(w.workoutKey),
+  }));
+  assert.deepEqual(noted, ["k0"], "only the genuinely track-less workout may be remembered");
+  assert.equal(res.skipped, 1);
+  assert.equal(res.httpSkipped, 4);
+  assert.deepEqual(res.httpStatuses, { 403: 4 });
+});
+
 test("downloadAll skips track-less workouts without counting them as failures", async () => {
   const fakeFetch = async (url) => {
     const key = url.split("/").pop();
@@ -122,6 +146,18 @@ test("downloadAll skips track-less workouts without counting them as failures", 
   assert.equal(res.files.length, 4);
   assert.equal(res.skipped, 1);
   assert.deepEqual(res.failedKeys, []);
+});
+
+test("onProgress distinguishes an HTTP skip from a track-less skip", async () => {
+  const fakeFetch = async (url) => {
+    const key = url.split("/").pop();
+    if (key === "k0") return { ok: true, text: async () => "<gpx></gpx>" };
+    if (key === "k1") return { ok: false, status: 404 };
+    return { ok: true, text: async () => gpxFor(key) };
+  };
+  const states = [];
+  await downloadAll(workoutList(3), fakeFetch, {}, fast({ onProgress: (p) => states.push(p.state) }));
+  assert.deepEqual(states, ["notrack", "http", "saved"]);
 });
 
 test("one workout failing does not abort the run — the rest still download", async () => {
@@ -204,7 +240,8 @@ test("an empty history is a no-op, not an error", async () => {
   }, {}, fast());
   assert.deepEqual(res, {
     files: [], byActivity: {}, failedKeys: [],
-    skipped: 0, skippedExisting: 0, downloaded: 0, cancelled: false,
+    skipped: 0, skippedExisting: 0, downloaded: 0,
+    httpSkipped: 0, httpStatuses: {}, cancelled: false,
   });
 });
 
@@ -299,4 +336,88 @@ test("byActivity counts the whole history, including workouts already saved", as
     onFile: async () => {},
   }));
   assert.deepEqual(res.byActivity, { 1: 4 });
+});
+
+// ---- reidittömien muistilista: formaatti ----
+
+const { NO_TRACK_FILE, parseNoTrack, serializeNoTrack } = require("./core.js");
+
+test("parseNoTrack reads keys and ignores comments and blank lines", () => {
+  const set = parseNoTrack("# selitys\n\nw001\n  w002  \n\n# toinen\nw003\n");
+  assert.deepEqual([...set].sort(), ["w001", "w002", "w003"]);
+});
+
+test("parseNoTrack tolerates a missing, empty or garbled file", () => {
+  for (const input of ["", null, undefined, "# vain kommentti\n", "\n\n\n"]) {
+    assert.equal(parseNoTrack(input).size, 0, `input ${JSON.stringify(input)}`);
+  }
+});
+
+test("parseNoTrack handles Windows line endings", () => {
+  assert.deepEqual([...parseNoTrack("# c\r\nw1\r\nw2\r\n")].sort(), ["w1", "w2"]);
+});
+
+test("serializeNoTrack round-trips through parseNoTrack", () => {
+  const original = new Set(["w9", "w1", "w5"]);
+  const text = serializeNoTrack(original);
+  assert.deepEqual([...parseNoTrack(text)].sort(), ["w1", "w5", "w9"]);
+});
+
+test("the serialized file explains itself and is sorted", () => {
+  const text = serializeNoTrack(new Set(["w3", "w1"]));
+  const lines = text.split("\n");
+  assert.ok(lines[0].startsWith("#"), "should open with an explanation");
+  assert.match(text, /GPS-reitti/, "should say what the file is about");
+  assert.match(text, /Voit poistaa/, "should say how to undo it");
+  assert.deepEqual(lines.filter((l) => l && !l.startsWith("#")), ["w1", "w3"]);
+});
+
+test("the marker filename is hidden-ish and not mistaken for a GPX", () => {
+  assert.ok(NO_TRACK_FILE.startsWith("."), "a dot prefix keeps it out of the way");
+  assert.ok(!NO_TRACK_FILE.endsWith(".gpx"), "must not be picked up by the .gpx scan");
+});
+
+// ---- onNoTrack ----
+
+test("onNoTrack fires for track-less workouts only", async () => {
+  const fakeFetch = async (url) => {
+    const key = url.split("/").pop();
+    if (key === "k1" || key === "k3") return { ok: true, text: async () => "<gpx></gpx>" };
+    if (key === "k2") throw new Error("drop");
+    return { ok: true, text: async () => gpxFor(key) };
+  };
+  const noted = [];
+  const res = await downloadAll(workoutList(5), fakeFetch, {}, fast({
+    onNoTrack: async (w) => noted.push(w.workoutKey),
+  }));
+  assert.deepEqual(noted, ["k1", "k3"], "not the failure, not the successes");
+  assert.equal(res.skipped, 2);
+});
+
+test("a workout in the no-track list costs no network call on the next run", async () => {
+  const seen = [];
+  const fakeFetch = async (url) => {
+    const key = url.split("/").pop();
+    if (!url.includes("/workouts?")) seen.push(key);
+    if (key === "k1") return { ok: true, text: async () => "<gpx></gpx>" };
+    return { ok: true, text: async () => gpxFor(key) };
+  };
+
+  // Ensimmäinen ajo oppii, että k1 on reiditön.
+  const learned = new Set();
+  const saved = new Set();
+  await downloadAll(workoutList(3), fakeFetch, {}, fast({
+    onFile: async (name) => { saved.add(name); },
+    onNoTrack: async (w) => { learned.add(w.workoutKey); },
+  }));
+  assert.deepEqual([...learned], ["k1"]);
+
+  // Toinen ajo ohittaa sekä tallennetut että opitut reidittömät.
+  seen.length = 0;
+  const res = await downloadAll(workoutList(3), fakeFetch, {}, fast({
+    shouldSkip: (name, w) => saved.has(name) || learned.has(w.workoutKey),
+    onFile: async () => {},
+  }));
+  assert.deepEqual(seen, [], "nothing at all should be re-fetched");
+  assert.equal(res.skippedExisting, 3);
 });

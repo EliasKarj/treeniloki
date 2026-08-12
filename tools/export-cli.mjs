@@ -18,17 +18,39 @@
 // Avaimen saa selaimesta: kirjaudu sports-tracker.comiin, avaa konsoli ja aja
 //   localStorage.getItem("sessionkey")
 
-import { mkdir, readdir, writeFile, rename, unlink } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile, rename, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
 // Jaettu ydin: samat haku- ja uudelleenyritysfunktiot joita selaimen
 // kirjanmerkkipainike käyttää. Ydin ei käynnistä mitään itsestään.
-const { listAllWorkouts, downloadAll, buildFilename } = require("./core.js");
+const {
+  listAllWorkouts, downloadAll, buildFilename, NO_TRACK_FILE, parseNoTrack, serializeNoTrack,
+} = require("./core.js");
 
 const DEFAULT_OUT = "./gpx-export";
 const DEFAULT_THROTTLE_MS = 150;
+
+/**
+ * Muistilista reidittömistä treeneistä. Muoto tulee ytimestä, jotta selaimen
+ * kirjanmerkki ja tämä komentorivi lukevat samaa tiedostoa samasta kansiosta.
+ */
+export { NO_TRACK_FILE };
+
+/** Lue tunnetut reidittömät avaimet. Puuttuva tai rikkinäinen tiedosto = tyhjä joukko. */
+export async function readNoTrack(dir) {
+  try {
+    return parseNoTrack(await readFile(join(dir, NO_TRACK_FILE), "utf8"));
+  } catch {
+    return new Set();
+  }
+}
+
+/** Kirjoita joukko levylle. Kutsutaan jokaisen löydön jälkeen, jotta keskeytys ei hukkaa tietoa. */
+export async function writeNoTrack(dir, keys) {
+  await writeFile(join(dir, NO_TRACK_FILE), serializeNoTrack(keys), "utf8");
+}
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -131,23 +153,36 @@ export async function exportAll({
   // treeniä. `.part`-tiedostot jäävät ulkopuolelle, joten kesken katkennut
   // kirjoitus haetaan uudelleen.
   const onDisk = new Set((await readdir(outDir)).filter((f) => f.endsWith(".gpx")));
-  const alreadyOnDisk = force ? 0 : workouts.filter((w) => onDisk.has(buildFilename(w))).length;
+  const noTrack = force ? new Set() : await readNoTrack(outDir);
 
-  log.log(`Löytyi ${workouts.length} treeniä. Levyllä jo ${alreadyOnDisk}, haetaan ${workouts.length - alreadyOnDisk}.`);
+  const alreadyOnDisk = force ? 0 : workouts.filter((w) => onDisk.has(buildFilename(w))).length;
+  const alreadyNoTrack = force ? 0 : workouts.filter((w) => noTrack.has(w.workoutKey)).length;
+  const skipping = alreadyOnDisk + alreadyNoTrack;
+
+  log.log(`Löytyi ${workouts.length} treeniä. Levyllä jo ${alreadyOnDisk}` +
+    (alreadyNoTrack ? `, ${alreadyNoTrack} tiedetään reidittömiksi` : "") +
+    `, haetaan ${workouts.length - skipping}.`);
 
   const result = await downloadAll(workouts, fetchImpl, headers, {
     throttleMs,
     sleepImpl,
     log,
-    shouldSkip: force ? null : (name) => onDisk.has(name),
+    shouldSkip: force ? null : (name, w) => onDisk.has(name) || noTrack.has(w.workoutKey),
     onFile: (name, gpx) => writeAtomic(outDir, name, gpx),
+    onNoTrack: async (w) => {
+      noTrack.add(w.workoutKey);
+      await writeNoTrack(outDir, noTrack);
+    },
   });
 
   return {
     total: workouts.length,
-    alreadyOnDisk: result.skippedExisting,
+    alreadyOnDisk,
+    alreadyNoTrack,
     downloaded: result.downloaded,
     skippedNoTrack: result.skipped,
+    httpSkipped: result.httpSkipped,
+    httpStatuses: result.httpStatuses,
     failed: result.failedKeys,
     byActivity: result.byActivity,
   };
@@ -157,9 +192,24 @@ export async function exportAll({
 export function reportSummary(summary, outDir, log = console) {
   log.log("");
   log.log(`Valmis. ${summary.downloaded} ladattu, ${summary.alreadyOnDisk} oli jo levyllä, ` +
-    `${summary.skippedNoTrack} ilman reittiä, ${summary.failed.length} epäonnistui.`);
+    `${summary.skippedNoTrack} ilman reittiä` +
+    (summary.alreadyNoTrack ? ` (+${summary.alreadyNoTrack} tiedettiin jo)` : "") +
+    `, ${summary.failed.length} epäonnistui.`);
   log.log(`Kansio: ${outDir}`);
   log.log("Treenit lajeittain (activityId → määrä):", summary.byActivity);
+
+  const http = summary.httpSkipped || 0;
+  if (http) {
+    const statuses = Object.entries(summary.httpStatuses || {})
+      .map(([code, n]) => `${code} × ${n}`).join(", ");
+    log.warn("");
+    log.warn(`${http} treeniä palautti HTTP-virheen (${statuses}). Näitä ei merkitty pysyvästi`);
+    log.warn("ohitettaviksi, joten uusi ajo yrittää ne uudelleen.");
+    // Iso määrä 401/403 tarkoittaa käytännössä aina vanhentunutta sessiota.
+    if (summary.httpStatuses?.[401] || summary.httpStatuses?.[403]) {
+      log.warn("HTTP 401/403 viittaa vanhentuneeseen sessiotunnisteeseen — hae uusi ja aja uudelleen.");
+    }
+  }
 
   if (summary.failed.length) {
     log.warn("");
@@ -167,7 +217,7 @@ export function reportSummary(summary, outDir, log = console) {
     log.warn("Aja sama komento uudelleen — jo ladatut ohitetaan ja vain nämä yritetään uudelleen.");
     return 1;
   }
-  return 0;
+  return http ? 1 : 0;
 }
 
 /** Suoraan ajettaessa: lue argumentit, aja, tulosta yhteenveto. */

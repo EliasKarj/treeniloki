@@ -85,6 +85,18 @@ treenit (käsin lisätyt, sisäjuoksut) ohitetaan.
 **Jos ajo katkeaa** — kone jämähtää, suljet välilehden, verkko pätkii — klikkaa kirjanmerkkiä
 uudelleen ja valitse sama kansio. Jo tallennetut ohitetaan automaattisesti.
 
+> **▸ Miksi reidittömät muistetaan erikseen:** sisäjuoksusta ei synny tiedostoa, joten pelkkä
+> kansion sisältö ei kerro että se on jo tarkistettu — ilman muistiinpanoa jokainen jatkoajo
+> hakisi ne kaikki uudelleen. Määrä on käyttäjäkohtainen eikä sitä voi tietää etukäteen, joten
+> lista karttuu ajon aikana kansioon tiedostoon `.treeniloki-ei-reittia.txt`. Se on tavallista
+> tekstiä ja voit poistaa sen, jos haluat tarkistaa treenit uudelleen.
+>
+> **▸ Miksi HTTP-virhettä ei muisteta:** vanhentunut sessio palauttaa 401 tai 403 *jokaiselle*
+> treenille. Jos ne kirjattaisiin pysyvästi ohitettaviksi, koko loppuhistoria katoaisi hiljaa
+> — vienti näyttäisi onnistuneelta, mutta tuhannet treenit olisivat merkitty ikuisesti
+> reidittömiksi. Siksi vain aito 200-vastaus ilman trackpointeja lasketaan pysyväksi
+> tosiasiaksi; HTTP-virheet raportoidaan erikseen ja yritetään seuraavalla ajolla uudelleen.
+
 > **▸ Miksi kirjanmerkki eikä konsoli:** kirjanmerkki ajetaan sivun omassa kontekstissa aivan
 > kuten konsoliin liitetty skripti, joten se pääsee käsiksi sessiotunnisteeseen. Ero on
 > käytettävyydessä: kertaluontoisen raahauksen jälkeen vienti on yksi klikkaus, eikä
@@ -515,7 +527,7 @@ Testit vaativat **Node.js 22+**. Riippuvuuksia ei tarvitse asentaa — kaikki k�
 sisäänrakennettua `node:test`-kirjastoa.
 
 ```bash
-npm test              # koko testisarja, 196 testiä
+npm test              # koko testisarja, 213 testiä
 npm run test:watch    # ajaa uudelleen kun tiedostot muuttuvat
 npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 ```
@@ -526,13 +538,13 @@ npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 |---------------|-------|---------|
 | `test/*.test.mjs` (13 kpl) | Analyysimoduulit yksitellen | 58 |
 | `test/edges.test.mjs` | Raja-arvot — jokainen kynnys molemmilta puolilta | 38 |
-| `tools/core.test.js` | Jaettu vientiydin: uudelleenyritys, jatkaminen, virheensieto | 28 |
+| `tools/core.test.js` | Jaettu vientiydin: uudelleenyritys, jatkaminen, reidittömien muisti | 38 |
 | `test/render.test.mjs` | `app/render/*` — kortit, taulukko, kaaviot, tavoitteet | 23 |
-| `tools/export-cli.test.mjs` | Node-CLI: argumentit, levylle kirjoitus, jatkaminen | 17 |
+| `tools/export-cli.test.mjs` | Node-CLI: argumentit, levylle kirjoitus, jatkaminen | 24 |
 | `test/pipeline.test.mjs` | Koko putki GPX-tekstistä valmiiseen malliin | 13 |
 | `test/assets.test.mjs` | Sivujen eheys: viittaukset, moduuliverkko, havainnekuvat | 11 |
 | `test/interaction.test.mjs` | Tiedostojen pudotus, välilehdet, tavoitteen vaihto | 8 |
-| | **Yhteensä** | **196** |
+| | **Yhteensä** | **213** |
 
 Kattavuus lähdekoodista: **rivit 94 %, haaraumat 94 %, funktiot 96 %**. Kattamatta jää
 export-skriptin selainliima (JSZip-lataus ja tiedoston tallennus), jota ei voi ajaa Nodessa.

@@ -4,7 +4,9 @@ import { mkdtemp, readdir, readFile, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { parseArgs, exportAll, reportSummary, USAGE } from "./export-cli.mjs";
+import {
+  parseArgs, exportAll, reportSummary, USAGE, readNoTrack, NO_TRACK_FILE,
+} from "./export-cli.mjs";
 
 const quiet = () => {
   const lines = { log: [], warn: [] };
@@ -193,11 +195,12 @@ test("a failed workout is retried by the next run, since it was never written", 
   }
 });
 
-test("track-less and 404 workouts are skipped without being treated as failures", async () => {
+test("track-less and HTTP-error workouts are counted separately, neither as failures", async () => {
   const dir = await tempDir();
   try {
     const summary = await run(dir, fakeApi(4, { k1: "notrack", k2: "404" }));
-    assert.equal(summary.skippedNoTrack, 2);
+    assert.equal(summary.skippedNoTrack, 1, "only the genuinely track-less one");
+    assert.equal(summary.httpSkipped, 1);
     assert.deepEqual(summary.failed, []);
     assert.equal(summary.downloaded, 2);
   } finally {
@@ -254,4 +257,115 @@ test("reportSummary exits zero on a clean run and one when workouts failed", () 
   const dirty = { ...clean, downloaded: 2, failed: ["k9"] };
   assert.equal(reportSummary(dirty, "./ulos", log), 1);
   assert.ok(log.lines.warn.some((l) => /uudelleen/.test(l)), "should tell the user how to retry");
+});
+
+// ---- reidittömien muistilista levyllä ----
+
+test("a track-less workout is recorded so the next run skips it", async () => {
+  const dir = await tempDir();
+  try {
+    const first = fakeApi(4, { k1: "notrack", k2: "notrack" });
+    const s1 = await run(dir, first);
+    assert.equal(s1.skippedNoTrack, 2);
+    assert.equal(s1.alreadyNoTrack, 0, "nothing was known on the first run");
+    assert.deepEqual([...(await readNoTrack(dir))].sort(), ["k1", "k2"]);
+
+    const second = fakeApi(4, { k1: "notrack", k2: "notrack" });
+    const s2 = await run(dir, second);
+    assert.equal(s2.alreadyNoTrack, 2);
+    assert.deepEqual(second.calls, [], "no request for files nor for known track-less workouts");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("the list is persisted as each one is found, not only at the end of the run", async () => {
+  const dir = await tempDir();
+  try {
+    // Luetaan levyltä kesken ajon: kun k2 haetaan, k1:n pitää jo olla kirjattuna.
+    // Ilman tätä keskeytynyt ajo menettäisi kaiken oppimansa.
+    const api = fakeApi(4, { k1: "notrack" });
+    let seenMidRun = null;
+    const peeking = async (url) => {
+      if (url.endsWith("k2")) seenMidRun = [...(await readNoTrack(dir))];
+      return api.fetchImpl(url);
+    };
+    await run(dir, { ...api, fetchImpl: peeking });
+    assert.deepEqual(seenMidRun, ["k1"], "k1 must be on disk before the run finishes");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("the marker file sits alongside the GPX files without confusing the scan", async () => {
+  const dir = await tempDir();
+  try {
+    await run(dir, fakeApi(3, { k0: "notrack" }));
+    const files = (await readdir(dir)).sort();
+    assert.ok(files.includes(NO_TRACK_FILE), "the marker file should be there");
+    assert.equal(files.filter((f) => f.endsWith(".gpx")).length, 2);
+
+    // 2 tiedostoa + 1 tiedetty reiditön = ei yhtään verkkopyyntöä.
+    const again = fakeApi(3, { k0: "notrack" });
+    const s = await run(dir, again);
+    assert.equal(s.alreadyOnDisk, 2);
+    assert.equal(s.alreadyNoTrack, 1);
+    assert.deepEqual(again.calls, []);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("--force ignores the no-track list and re-checks everything", async () => {
+  const dir = await tempDir();
+  try {
+    await run(dir, fakeApi(3, { k1: "notrack" }));
+    const again = fakeApi(3, { k1: "notrack" });
+    const s = await run(dir, again, { force: true });
+    assert.equal(s.alreadyNoTrack, 0);
+    assert.deepEqual(again.calls, ["k0", "k1", "k2"]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("a garbled marker file degrades to re-checking rather than crashing", async () => {
+  const dir = await tempDir();
+  try {
+    await writeFile(join(dir, NO_TRACK_FILE), "  roskaa\n# ok\n", "utf8");
+    const api = fakeApi(2, { k0: "notrack" });
+    const s = await run(dir, api);
+    assert.equal(s.downloaded, 1);
+    assert.ok(api.calls.length > 0, "should still do useful work");
+    assert.ok((await readNoTrack(dir)).has("k0"), "and repair the list");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("an HTTP error is not remembered, so the next run retries it", async () => {
+  const dir = await tempDir();
+  try {
+    await run(dir, fakeApi(3, { k1: "404" }));
+    assert.ok(!(await readNoTrack(dir)).has("k1"), "an HTTP error must never enter the list");
+
+    const again = fakeApi(3, { k1: "notrack" });
+    const s = await run(dir, again);
+    assert.deepEqual(again.calls, ["k1"], "the previously erroring workout is retried");
+    assert.ok((await readNoTrack(dir)).has("k1"), "and now that it is genuinely track-less, it is remembered");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("reportSummary warns about an expired session when 401/403 dominate", () => {
+  const log = quiet();
+  const code = reportSummary({
+    total: 100, alreadyOnDisk: 0, alreadyNoTrack: 0, downloaded: 12, skippedNoTrack: 0,
+    httpSkipped: 88, httpStatuses: { 403: 88 }, failed: [], byActivity: { 1: 100 },
+  }, "./ulos", log);
+  assert.equal(code, 1, "a wall of HTTP errors is not a clean run");
+  const warned = log.lines.warn.join(" ");
+  assert.match(warned, /403 × 88/);
+  assert.match(warned, /vanhentuneeseen sessiotunnisteeseen/);
 });

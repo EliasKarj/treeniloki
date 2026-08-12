@@ -63,9 +63,22 @@
     return all;
   }
 
-  // Uudelleenyritys vain heitetylle verkkovirheelle (katkennut yhteys, lepotila).
-  // Siisti ei-ok-vastaus (404, 403) on palvelimen todellinen vastaus, ei tilapäinen
-  // häiriö, joten se palauttaa nullin heti ilman uusintayrityksiä.
+  /**
+   * Hae yhden treenin GPX. Palauttaa aina objektin:
+   *
+   *   { gpx: "<gpx…>", reason: "ok" }              reitti löytyi
+   *   { gpx: null, reason: "notrack" }             200, mutta ei trackpointeja
+   *   { gpx: null, reason: "http", status: 403 }   palvelin kielsi tai ei löytänyt
+   *
+   * Nämä kaksi viimeistä on pidettävä erillään. "notrack" on pysyvä tosiasia
+   * treenistä (sisäjuoksu, käsin lisätty) ja sen saa muistaa. HTTP-virhe ei ole:
+   * vanhentunut sessio palauttaa 401/403 jokaiselle treenille, ja jos ne
+   * kirjattaisiin pysyvästi ohitettaviksi, koko loppuhistoria katoaisi hiljaa.
+   *
+   * Uudelleenyritys koskee vain heitettyä verkkovirhettä (katkennut yhteys,
+   * lepotila). Siisti ei-ok-vastaus on palvelimen todellinen vastaus, joten sen
+   * toistaminen tuottaisi saman tuloksen.
+   */
   async function fetchGpx(workoutKey, fetchImpl, headers, sleepImpl) {
     if (!sleepImpl) sleepImpl = sleep;
     for (var attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -79,9 +92,11 @@
         await sleepImpl(RETRY_BASE_MS * Math.pow(2, attempt - 1));
         continue;
       }
-      if (!res.ok) return null;
+      if (!res.ok) return { gpx: null, reason: "http", status: res.status };
       var text = await res.text();
-      return text.indexOf("<trkpt") !== -1 ? text : null;
+      return text.indexOf("<trkpt") !== -1
+        ? { gpx: text, reason: "ok" }
+        : { gpx: null, reason: "notrack" };
     }
   }
 
@@ -107,6 +122,7 @@
     var shouldSkip = opts.shouldSkip || null;
     var onProgress = opts.onProgress || null;
     var isCancelled = opts.isCancelled || null;
+    var onNoTrack = opts.onNoTrack || null;
 
     var files = [];
     var byActivity = {};
@@ -114,6 +130,8 @@
     var skipped = 0;
     var skippedExisting = 0;
     var downloaded = 0;
+    var httpSkipped = 0;
+    var httpStatuses = {};
     var cancelled = false;
 
     for (var i = startFrom; i < workouts.length; i++) {
@@ -131,17 +149,28 @@
 
       var state;
       try {
-        var gpx = await fetchGpx(w.workoutKey, fetchImpl, headers, sleepImpl);
-        if (gpx) {
-          if (onFile) await onFile(name, gpx, w);
-          else files.push({ name: name, gpx: gpx });
+        var res = await fetchGpx(w.workoutKey, fetchImpl, headers, sleepImpl);
+        if (res.reason === "ok") {
+          if (onFile) await onFile(name, res.gpx, w);
+          else files.push({ name: name, gpx: res.gpx });
           downloaded++;
           state = "saved";
           log.log(i + 1 + " / " + workouts.length + "  " + name);
-        } else {
+        } else if (res.reason === "notrack") {
           skipped++;
           state = "notrack";
+          // Pysyvä tosiasia treenistä: siitä ei synny tiedostoa, joten ilman
+          // muistiinpanoa jatkoajo hakisi sen aina uudelleen. Kutsuja kirjaa
+          // avaimen kohdekansioon, jolloin tieto karttuu ajojen välillä.
+          if (onNoTrack) await onNoTrack(w, name);
           log.log(i + 1 + " / " + workouts.length + "  (ohitettu — ei reittiä)");
+        } else {
+          // HTTP-virhettä ei muisteta: se voi johtua vanhentuneesta sessiosta,
+          // ja seuraavan ajon kuuluu yrittää uudelleen.
+          httpSkipped++;
+          httpStatuses[res.status] = (httpStatuses[res.status] || 0) + 1;
+          state = "http";
+          log.warn(i + 1 + " / " + workouts.length + "  (ohitettu — HTTP " + res.status + ")");
         }
       } catch (e) {
         failedKeys.push(w.workoutKey);
@@ -155,6 +184,7 @@
     return {
       files: files, byActivity: byActivity, failedKeys: failedKeys,
       skipped: skipped, skippedExisting: skippedExisting, downloaded: downloaded,
+      httpSkipped: httpSkipped, httpStatuses: httpStatuses,
       cancelled: cancelled,
     };
   }
@@ -162,6 +192,39 @@
   /** Mistä jatketaan, luettuna window-lipusta. Ei koskaan negatiivinen. */
   function resumeOffset(win) {
     return Math.max(0, Math.trunc(Number(win && win.TREENI_RESUME_FROM)) || 0);
+  }
+
+  // ---- Muistilista reidittömistä treeneistä ----
+  //
+  // Reidittömästä treenistä (sisäjuoksu, käsin lisätty) ei synny GPX-tiedostoa,
+  // joten kansion sisältö ei kerro että se on jo tarkistettu. Ilman tätä listaa
+  // jokainen jatkoajo hakisi ne uudelleen. Määrä on käyttäjäkohtainen, joten
+  // lista karttuu ajon aikana kohdekansioon — sitä ei voi tietää etukäteen.
+  //
+  // Muoto määritellään tässä, jotta selain ja komentorivi lukevat samaa
+  // tiedostoa; itse tallennus kuuluu kutsujalle.
+
+  var NO_TRACK_FILE = ".treeniloki-ei-reittia.txt";
+
+  var NO_TRACK_HEADER = [
+    "# Treeniloki: treenit joilla ei ole GPS-reittiä (sisäjuoksut, käsin lisätyt).",
+    "# Nämä ohitetaan seuraavilla ajoilla, jottei niitä haettaisi turhaan uudelleen.",
+    "# Voit poistaa tämän tiedoston jos haluat tarkistaa ne uudelleen.",
+  ];
+
+  /** Rivipohjainen jäsennys: kommentit ja tyhjät rivit ohitetaan. */
+  function parseNoTrack(text) {
+    var out = new Set();
+    String(text || "").split(/\r?\n/).forEach(function (line) {
+      var k = line.trim();
+      if (k && k.charAt(0) !== "#") out.add(k);
+    });
+    return out;
+  }
+
+  /** Sarjoita joukko tiedostoksi. Järjestetty, jotta diffit pysyvät luettavina. */
+  function serializeNoTrack(keys) {
+    return NO_TRACK_HEADER.concat([...keys].sort(), [""]).join("\n");
   }
 
   var core = {
@@ -179,6 +242,9 @@
     fetchGpx: fetchGpx,
     downloadAll: downloadAll,
     resumeOffset: resumeOffset,
+    NO_TRACK_FILE: NO_TRACK_FILE,
+    parseNoTrack: parseNoTrack,
+    serializeNoTrack: serializeNoTrack,
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = core;

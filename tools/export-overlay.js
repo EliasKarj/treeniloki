@@ -78,6 +78,7 @@
       "<span>Tallennettu <b>" + c.downloaded + "</b></span>",
       c.skippedExisting ? "<span>Jo kansiossa <b>" + c.skippedExisting + "</b></span>" : "",
       c.skipped ? "<span>Ei reittiä <b>" + c.skipped + "</b></span>" : "",
+      c.http ? "<span>HTTP-virhe <b>" + c.http + "</b></span>" : "",
       c.failed ? "<span>Virheitä <b>" + c.failed + "</b></span>" : "",
     ].join("");
   }
@@ -95,19 +96,36 @@
   /** Kirjoittaa suoraan valittuun kansioon. Palauttaa {onFile, shouldSkip, label}. */
   async function directorySink() {
     var dir = await window.showDirectoryPicker({ mode: "readwrite" });
+
+    async function writeTo(name, contents) {
+      // createWritable kirjoittaa vaihtotiedostoon ja julkaisee vasta close():ssa,
+      // joten kesken jäänyt kirjoitus ei näy valmiina tiedostona.
+      var fh = await dir.getFileHandle(name, { create: true });
+      var w = await fh.createWritable();
+      await w.write(contents);
+      await w.close();
+    }
+
     var existing = new Set();
     for await (var entry of dir.keys()) if (entry.slice(-4) === ".gpx") existing.add(entry);
+
+    // Reidittömistä treeneistä ei jää tiedostoa, joten kansio ei muista niitä
+    // ilman erillistä listaa. Sama tiedosto kuin Node-komentorivillä.
+    var noTrack = new Set();
+    try {
+      var nh = await dir.getFileHandle(core.NO_TRACK_FILE);
+      noTrack = core.parseNoTrack(await (await nh.getFile()).text());
+    } catch (e) { /* ensimmäinen ajo tähän kansioon */ }
+
     return {
       label: "kansioon " + (dir.name || "valittu kansio"),
       existing: existing,
-      shouldSkip: function (name) { return existing.has(name); },
-      onFile: async function (name, gpx) {
-        // createWritable kirjoittaa vaihtotiedostoon ja julkaisee vasta close():ssa,
-        // joten kesken jäänyt kirjoitus ei näy valmiina tiedostona.
-        var fh = await dir.getFileHandle(name, { create: true });
-        var w = await fh.createWritable();
-        await w.write(gpx);
-        await w.close();
+      knownNoTrack: noTrack.size,
+      shouldSkip: function (name, w) { return existing.has(name) || noTrack.has(w.workoutKey); },
+      onFile: function (name, gpx) { return writeTo(name, gpx); },
+      onNoTrack: async function (w) {
+        noTrack.add(w.workoutKey);
+        await writeTo(core.NO_TRACK_FILE, core.serializeNoTrack(noTrack));
       },
       finish: async function () {},
     };
@@ -137,8 +155,10 @@
     return {
       label: "zip-tiedostoksi",
       existing: new Set(),
+      knownNoTrack: 0,
       shouldSkip: null,
       onFile: null, // core kerää files-taulukkoon
+      onNoTrack: null, // ilman kansiota ei ole mihin muistiinpanoa tallentaa
       finish: async function (result) {
         var tag = core.formatDate(Date.now());
         try {
@@ -193,12 +213,20 @@
       return;
     }
 
-    var already = 0;
+    // Kaksi eri syytä ohittaa: tiedosto on jo kansiossa, tai treeni tiedetään
+    // reidittömäksi. Erotellaan ne, koska ne tarkoittavat käyttäjälle eri asiaa.
+    var already = 0, knownNoTrack = 0;
     if (sink.shouldSkip) {
-      workouts.forEach(function (w) { if (sink.shouldSkip(core.buildFilename(w))) already++; });
+      workouts.forEach(function (w) {
+        var name = core.buildFilename(w);
+        if (sink.existing.has(name)) already++;
+        else if (sink.shouldSkip(name, w)) knownNoTrack++;
+      });
     }
     status("Löytyi " + workouts.length + " treeniä" +
-      (already ? ", joista " + already + " on jo kansiossa" : "") + ". Tallennetaan " + sink.label + "…");
+      (already ? ", joista " + already + " on jo kansiossa" : "") +
+      (knownNoTrack ? " ja " + knownNoTrack + " tiedetään reidittömiksi" : "") +
+      ". Tallennetaan " + sink.label + "…");
 
     elGo.disabled = false;
     elGo.className = "a g";
@@ -209,18 +237,20 @@
       elGo.textContent = "Keskeytetään…";
     };
 
-    var live = { downloaded: 0, skipped: 0, skippedExisting: 0, failed: 0 };
+    var live = { downloaded: 0, skipped: 0, skippedExisting: 0, http: 0, failed: 0 };
     var quiet = { log: function () {}, warn: function () {} };
 
     var result = await core.downloadAll(workouts, fetch, headers, {
       log: quiet,
       onFile: sink.onFile,
       shouldSkip: sink.shouldSkip,
+      onNoTrack: sink.onNoTrack,
       isCancelled: function () { return cancelled; },
       onProgress: function (p) {
         if (p.state === "saved") live.downloaded++;
         else if (p.state === "notrack") live.skipped++;
         else if (p.state === "existing") live.skippedExisting++;
+        else if (p.state === "http") live.http++;
         else if (p.state === "failed") live.failed++;
         progress(p.index + 1, p.total);
         counts(live);
@@ -240,7 +270,13 @@
         return;
       }
       var msg = "Valmis! " + result.downloaded + " treeniä tallennettu.";
-      if (result.failedKeys.length) {
+      if (result.httpSkipped) {
+        // 401/403 koko rintamalla tarkoittaa käytännössä vanhentunutta sessiota.
+        var authFail = result.httpStatuses[401] || result.httpStatuses[403];
+        status(msg + " " + result.httpSkipped + " palautti HTTP-virheen." +
+          (authFail ? " Kirjaudu Sports Trackeriin uudelleen ja klikkaa kirjanmerkkiä."
+                    : " Klikkaa kirjanmerkkiä uudelleen, niin ne yritetään uudelleen."), "err");
+      } else if (result.failedKeys.length) {
         msg += " " + result.failedKeys.length + " epäonnistui — klikkaa kirjanmerkkiä uudelleen, " +
           "niin vain puuttuvat haetaan.";
         status(msg, "err");
