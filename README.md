@@ -6,7 +6,9 @@
 
 Raahaa GPX-tiedostot sivulle ja saat kuntotrendit, loukkaantumisriskin, sykealueet ja valmennusvinkit.
 
-`ei riippuvuuksia` · `ei build-vaihetta` · `100 % selaimessa` · `Node 22 + npm testeihin`
+### [→ Avaa Treeniloki](https://eliaskarj.github.io/treeniloki/) · [Vie treenit Sports Trackerista](https://eliaskarj.github.io/treeniloki/export.html)
+
+`ei asennusta` · `ei tilejä` · `ei riippuvuuksia` · `100 % selaimessa`
 
 </div>
 
@@ -14,10 +16,11 @@ Raahaa GPX-tiedostot sivulle ja saat kuntotrendit, loukkaantumisriskin, sykealue
 
 ## Sisältö
 
-- [Pika-aloitus](#pika-aloitus) — miten saat sivun pyörimään paikallisesti
-- [Mistä GPX-tiedostot?](#mistä-gpx-tiedostot) — Sports Tracker -export
+- [Käyttöönotto](#käyttöönotto) — toimii selaimessa, mitään ei tarvitse asentaa
+- [Mistä GPX-tiedostot?](#mistä-gpx-tiedostot) — Sports Tracker -vienti
 - [Mitä sivu näyttää](#mitä-sivu-näyttää) — kaikki tulokset selitettynä
 - [Perusluvut ja niiden laskenta](#perusluvut-ja-niiden-laskenta)
+- [Paikallinen ajo ja kehitys](#paikallinen-ajo-ja-kehitys)
 - [Testit](#testit)
 - [Projektin rakenne](#projektin-rakenne)
 - [Tietosuoja](#tietosuoja)
@@ -27,54 +30,45 @@ mitä se ei kerro.
 
 ---
 
-## Pika-aloitus
+## Käyttöönotto
 
-Sovellus on pelkkää HTML:ää ja JavaScriptiä. **Ei `npm install`-vaihetta, ei kääntämistä.**
-Tarvitset vain paikallisen web-palvelimen.
+Treeniloki on julkaistu GitHub Pagesiin. **Mitään ei tarvitse asentaa, kloonata eikä
+kirjautua** — avaa vain osoite selaimessa.
 
-### 1. Hae projekti koneellesi
+| Sivu | Osoite | Mihin |
+|------|--------|-------|
+| **Analyysi** | [eliaskarj.github.io/treeniloki](https://eliaskarj.github.io/treeniloki/) | Raahaa GPX-tiedostot ja katso tulokset |
+| **Vienti** | […/export.html](https://eliaskarj.github.io/treeniloki/export.html) | Hae treenit Sports Trackerista |
 
-```bash
-git clone https://github.com/EliasKarj/treeniloki
-cd treeniloki
-```
+### Ensimmäinen käyttökerta
 
-### 2. Käynnistä paikallinen palvelin
+1. Avaa **[vientisivu](https://eliaskarj.github.io/treeniloki/export.html)** ja raahaa painike
+   kirjanmerkkipalkkiin *(vain kerran — sivulla on havainnekuvat)*
+2. Kirjaudu [sports-tracker.com](https://www.sports-tracker.com)iin, klikkaa kirjanmerkkiä ja
+   valitse kansio johon treenit tallennetaan
+3. Avaa **[analyysisivu](https://eliaskarj.github.io/treeniloki/)** ja raahaa kansion
+   GPX-tiedostot pudotusalueeseen
 
-Valitse **yksi** näistä — kaikki tekevät saman asian:
+Seuraavilla kerroilla riittää kohta 2 uusien treenien hakemiseen ja kohta 3.
 
-```bash
-python3 -m http.server 8000     # Python (asennettuna useimmiten valmiiksi)
-npx serve .                     # Node.js
-npx http-server -p 8000         # Node.js, vaihtoehto
-php -S localhost:8000           # PHP
-```
-
-### 3. Avaa selaimessa
-
-```
-http://localhost:8000/index.html
-```
-
-Raahaa GPX-tiedostot pudotusalueeseen — analyysi ilmestyy heti. Palvelimen saat suljettua
-painamalla `Ctrl+C` terminaalissa.
-
-> [!IMPORTANT]
-> **Älä avaa `index.html`-tiedostoa suoraan kaksoisklikkaamalla.** Sivu jää tyhjäksi.
+> **▸ Miksi pelkkä Pages riittää:** sovelluksessa ei ole palvelinpuolta lainkaan. GPX-tiedostot
+> luetaan ja analysoidaan selaimessasi JavaScriptillä, joten Pages tarjoilee vain staattiset
+> tiedostot. Tämä on myös tietosuojan ydin: treenidatasi ei koskaan lähde koneeltasi, koska
+> mitään ei ole minne lähettää.
 >
-> Syy: sovellus käyttää ES-moduuleja (`<script type="module">`), joita selain kieltäytyy
-> lataamasta `file://`-osoitteesta tietoturvasyistä (CORS). Osoitteen pitää alkaa
-> `http://localhost` — siksi tarvitset yllä olevan palvelimen.
+> **▸ Miksi tämä on turvallista vaikka sivu on julkinen:** julkaistu sivu on pelkkää koodia,
+> ei dataa. Sinun treenisi eivät ole siellä — ne ovat sinun koneellasi ja päätyvät selaimen
+> muistiin vasta kun raahaat ne itse sivulle.
 
 ### Ongelmatilanteet
 
 | Oire | Syy ja ratkaisu |
 |------|-----------------|
-| Sivu on täysin tyhjä | Avasit tiedoston `file://`-osoitteesta. Käynnistä palvelin kohdan 2 mukaan. |
-| `Address already in use` | Portti 8000 on varattu. Käytä toista porttia, esim. `python3 -m http.server 8080`. |
 | Raahaus ei tee mitään | Tiedostot eivät ole `.gpx`-päätteisiä, tai niistä puuttuu reitti. Ilman GPS-jälkeä olevat treenit ohitetaan. |
 | Kaaviot jäävät tyhjiksi | Dataa on liian vähän. Osa laskuista vaatii ≥ 3 treeniä, VO₂max ≥ 3 km:n lenkkejä. |
-| `python3: command not found` | Kokeile `python -m http.server 8000` tai Node-vaihtoehtoa `npx serve .`. |
+| Sykealueet puuttuvat | GPX-tiedostoissa ei ole sykedataa. Kaikki muu toimii silti. |
+| Kirjanmerkki ei tee mitään | Et ole kirjautuneena sports-tracker.comiin, tai olet väärällä sivustolla. |
+| Vienti tarjoaa zip-pakettia | Selaimestasi puuttuu kansioon kirjoitus. Käytä Chromea tai Edgeä, erityisesti jos treenejä on tuhansia. |
 
 ---
 
@@ -82,16 +76,8 @@ painamalla `Ctrl+C` terminaalissa.
 
 Sports Trackerissa ei ole joukkovientiä. Treenilokissa on siihen **kirjanmerkkipainike**:
 raahaat sen kerran palkkiin, ja sen jälkeen vienti on yhden klikkauksen päässä. Konsolia ei
-tarvita.
-
-### Näin se toimii
-
-1. Avaa **[vientisivu](https://eliaskarj.github.io/treeniloki/export.html)** ja raahaa painike
-   kirjanmerkkipalkkiin *(vain kerran)*
-2. Kirjaudu [sports-tracker.com](https://www.sports-tracker.com)iin
-3. **Klikkaa kirjanmerkkiä** → sivulle ilmestyy paneeli
-4. Paina "Valitse kansio ja aloita" ja seuraa edistymispalkkia
-5. Raahaa kansion GPX-tiedostot Treenilokin pudotusalueeseen
+tarvita. Vaiheet ovat yllä kohdassa [Käyttöönotto](#käyttöönotto); tässä on se mitä konepellin
+alla tapahtuu ja miksi.
 
 Tiedostot nimetään muotoon `YYYY-MM-DD_<laji>_<workoutKey>.gpx`. Ilman GPS-reittiä olevat
 treenit (käsin lisätyt, sisäjuoksut) ohitetaan.
@@ -490,13 +476,46 @@ aikaleimaa ohitetaan, ja alle kahden pisteen tiedosto hylätään kokonaan.
 
 ---
 
+## Paikallinen ajo ja kehitys
+
+Tätä ei tarvita sovelluksen käyttämiseen — vain jos haluat muokata koodia tai ajaa oman
+kopiosi. Sovellus on pelkkää HTML:ää ja JavaScriptiä: **ei `npm install`-vaihetta, ei
+kääntämistä.**
+
+```bash
+git clone https://github.com/EliasKarj/treeniloki
+cd treeniloki
+python3 -m http.server 8000     # tai: npx serve .  /  php -S localhost:8000
+```
+
+Avaa sitten `http://localhost:8000/index.html`.
+
+> [!IMPORTANT]
+> **Älä avaa `index.html`-tiedostoa suoraan kaksoisklikkaamalla.** Sivu jää tyhjäksi.
+>
+> Syy: sovellus käyttää ES-moduuleja (`<script type="module">`), joita selain kieltäytyy
+> lataamasta `file://`-osoitteesta tietoturvasyistä (CORS). Osoitteen pitää alkaa
+> `http://localhost` — siksi tarvitset palvelimen. Sama koskee `export.html`-sivua: se
+> rakentaa kirjanmerkin lukemalla omat lähdetiedostonsa, mikä ei onnistu `file://`-tilassa.
+
+| Oire | Ratkaisu |
+|------|----------|
+| Sivu on täysin tyhjä | Avasit tiedoston `file://`-osoitteesta — käynnistä palvelin yllä olevalla komennolla. |
+| `Address already in use` | Portti 8000 on varattu, kokeile `python3 -m http.server 8080`. |
+| `python3: command not found` | Kokeile `python -m http.server 8000` tai `npx serve .`. |
+
+Julkaisu tapahtuu automaattisesti: `main`-haaraan menevä push julkaistaan Pagesiin, mutta
+vasta kun testit ja kattavuuskynnys ovat menneet läpi.
+
+---
+
 ## Testit
 
 Testit vaativat **Node.js 22+**. Riippuvuuksia ei tarvitse asentaa — kaikki käyttää Nodeen
 sisäänrakennettua `node:test`-kirjastoa.
 
 ```bash
-npm test              # koko testisarja, 187 testiä
+npm test              # koko testisarja, 196 testiä
 npm run test:watch    # ajaa uudelleen kun tiedostot muuttuvat
 npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 ```
@@ -505,15 +524,15 @@ npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 
 | Testitiedosto | Kohde | Testejä |
 |---------------|-------|---------|
-| `test/workout · aggregate · breaks · spikeRisk · trainingLoad · detraining · intensity · hrZones · vo2max · goals · coaching · verdict · gpx` | Analyysimoduulit yksitellen | 58 |
-| `test/edges.test.mjs` | Raja-arvot ja poikkeustilanteet — jokainen kynnys molemmilta puolilta | 38 |
-| `test/render.test.mjs` | `app/render/*` — kortit, taulukko, kaaviot, tavoitepainikkeet | 23 |
-| `test/pipeline.test.mjs` | Koko putki GPX-tekstistä valmiiseen malliin | 13 |
-| `test/interaction.test.mjs` | Tiedostojen pudotus, välilehdet, tavoitteen vaihto | 8 |
-| `test/assets.test.mjs` | `index.html`:n viittaukset ja moduuliverkko | 7 |
-| `tools/core.test.js` | Jaettu ydin: uudelleenyritys, jatkaminen, virheensieto | 28 |
+| `test/*.test.mjs` (13 kpl) | Analyysimoduulit yksitellen | 58 |
+| `test/edges.test.mjs` | Raja-arvot — jokainen kynnys molemmilta puolilta | 38 |
+| `tools/core.test.js` | Jaettu vientiydin: uudelleenyritys, jatkaminen, virheensieto | 28 |
+| `test/render.test.mjs` | `app/render/*` — kortit, taulukko, kaaviot, tavoitteet | 23 |
 | `tools/export-cli.test.mjs` | Node-CLI: argumentit, levylle kirjoitus, jatkaminen | 17 |
-| `test/assets.test.mjs` | Myös: bookmarklet-lähteet pysyvät itsenäisinä | – |
+| `test/pipeline.test.mjs` | Koko putki GPX-tekstistä valmiiseen malliin | 13 |
+| `test/assets.test.mjs` | Sivujen eheys: viittaukset, moduuliverkko, havainnekuvat | 11 |
+| `test/interaction.test.mjs` | Tiedostojen pudotus, välilehdet, tavoitteen vaihto | 8 |
+| | **Yhteensä** | **196** |
 
 Kattavuus lähdekoodista: **rivit 94 %, haaraumat 94 %, funktiot 96 %**. Kattamatta jää
 export-skriptin selainliima (JSZip-lataus ja tiedoston tallennus), jota ei voi ajaa Nodessa.
