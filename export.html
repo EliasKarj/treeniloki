@@ -39,6 +39,23 @@
     .note.warn { border-left-color: var(--warn); }
     .back { color: var(--accent); font-size: 13px; text-decoration: none; }
     .back:hover { text-decoration: underline; }
+
+    /* Havainnekuvat: inline-SVG, jotta ne perivät teeman eikä kuvatiedostoja tarvita. */
+    figure { margin: 12px 0 4px; }
+    figure svg { width: 100%; max-width: 430px; height: auto; display: block; }
+    figcaption { color: var(--muted); font-size: 11px; margin-top: 6px; max-width: 430px; }
+    .d-win { fill: var(--panel); stroke: var(--line); }
+    .d-chrome { fill: #0a0f14; stroke: var(--line); }
+    .d-page { fill: #0a0f14; }
+    .d-dot { fill: var(--line); }
+    .d-line { stroke: var(--line); fill: none; }
+    .d-acc { fill: var(--accent); }
+    .d-txt { fill: var(--fg); font-size: 9px; }
+    .d-sub { fill: var(--muted); font-size: 8.5px; }
+    .d-dark { fill: #06121a; font-size: 9px; font-weight: 700; }
+    .d-hi { stroke: var(--accent); fill: none; stroke-dasharray: 3 2; stroke-width: 1.2; }
+    .d-arrow { stroke: var(--accent); fill: none; stroke-width: 1.6; stroke-dasharray: 5 3; }
+    .d-key { fill: #131c26; stroke: var(--line); }
   </style>
 </head>
 <body>
@@ -68,6 +85,56 @@
             <span class="drag" id="bmsize">rakennetaan…</span>
           </div>
           <button class="minibtn" id="copybm">Kopioi kirjanmerkin osoite</button>
+
+          <figure>
+            <svg viewBox="0 0 430 250" role="img" aria-labelledby="d1t">
+              <title id="d1t">Painike raahataan sivulta selaimen kirjanmerkkipalkkiin</title>
+              <defs>
+                <marker id="ah1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                  <path d="M0 0 L10 5 L0 10 z" fill="var(--accent)" />
+                </marker>
+              </defs>
+
+              <rect class="d-win" x="8" y="8" width="414" height="234" rx="9" />
+
+              <!-- selaimen yläpalkki -->
+              <circle class="d-dot" cx="26" cy="25" r="3.5" />
+              <circle class="d-dot" cx="38" cy="25" r="3.5" />
+              <circle class="d-dot" cx="50" cy="25" r="3.5" />
+              <rect class="d-chrome" x="64" y="17" width="344" height="16" rx="8" />
+              <text class="d-sub" x="74" y="28">eliaskarj.github.io/treeniloki/export.html</text>
+              <path class="d-line" d="M8 41 H422" />
+
+              <!-- kirjanmerkkipalkki -->
+              <rect class="d-dot" x="20" y="47" width="38" height="12" rx="3" />
+              <rect class="d-dot" x="64" y="47" width="30" height="12" rx="3" />
+              <rect class="d-hi" x="102" y="45" width="86" height="16" rx="4" />
+              <rect class="d-acc" x="106" y="48" width="78" height="10" rx="3" opacity="0.35" />
+              <text class="d-sub" x="196" y="57">← tähän</text>
+              <path class="d-line" d="M8 65 H422" />
+
+              <!-- sivun sisältö -->
+              <rect class="d-page" x="9" y="66" width="412" height="175" rx="0" />
+              <rect class="d-dot" x="30" y="86" width="110" height="7" rx="3.5" />
+              <rect class="d-dot" x="30" y="101" width="180" height="5" rx="2.5" />
+              <rect class="d-dot" x="30" y="112" width="140" height="5" rx="2.5" />
+
+              <!-- raahattava painike -->
+              <rect class="d-acc" x="140" y="152" width="152" height="32" rx="8" />
+              <text class="d-dark" x="216" y="172" text-anchor="middle">Vie Treenilokiin</text>
+
+              <!-- raahauksen kaari -->
+              <path class="d-arrow" marker-end="url(#ah1)" d="M172 150 C 118 132 108 100 138 68" />
+
+              <!-- osoitin -->
+              <path d="M186 176 l0 17 l4.5 -4.5 l3 7 l3.5 -1.6 l-3 -6.6 l6 -0.6 z"
+                    fill="var(--fg)" stroke="#06121a" stroke-width="1" />
+            </svg>
+            <figcaption>
+              Tartu painikkeeseen hiirellä ja vedä se selaimen kirjanmerkkipalkkiin.
+              Jos palkkia ei näy, avaa se näppäimillä <b>Ctrl+Shift+B</b>.
+            </figcaption>
+          </figure>
         </li>
         <li>
           <h3>Kirjaudu Sports Trackeriin</h3>
@@ -78,6 +145,58 @@
           <h3>Klikkaa kirjanmerkkiä</h3>
           <p>Sivun oikeaan yläkulmaan ilmestyy paneeli. Paina <b>”Valitse kansio ja aloita”</b>,
             valitse tyhjä kansio, ja seuraa edistymispalkkia.</p>
+
+          <figure>
+            <svg viewBox="0 0 430 250" role="img" aria-labelledby="d2t">
+              <title id="d2t">Kirjanmerkkiä klikataan Sports Trackerissa, jolloin vientipaneeli avautuu</title>
+              <defs>
+                <marker id="ah2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                  <path d="M0 0 L10 5 L0 10 z" fill="var(--accent)" />
+                </marker>
+              </defs>
+
+              <rect class="d-win" x="8" y="8" width="414" height="234" rx="9" />
+
+              <circle class="d-dot" cx="26" cy="25" r="3.5" />
+              <circle class="d-dot" cx="38" cy="25" r="3.5" />
+              <circle class="d-dot" cx="50" cy="25" r="3.5" />
+              <rect class="d-chrome" x="64" y="17" width="344" height="16" rx="8" />
+              <text class="d-sub" x="74" y="28">www.sports-tracker.com</text>
+              <path class="d-line" d="M8 41 H422" />
+
+              <!-- kirjanmerkki nyt palkissa -->
+              <rect class="d-dot" x="20" y="47" width="38" height="12" rx="3" />
+              <rect class="d-dot" x="64" y="47" width="30" height="12" rx="3" />
+              <rect class="d-acc" x="102" y="46" width="98" height="14" rx="3" />
+              <text class="d-dark" x="140" y="56" text-anchor="middle" style="font-size:8px">Vie Treenilokiin</text>
+              <path class="d-line" d="M8 65 H422" />
+
+              <rect class="d-page" x="9" y="66" width="412" height="175" rx="0" />
+              <rect class="d-dot" x="26" y="86" width="90" height="6" rx="3" />
+              <rect class="d-dot" x="26" y="100" width="150" height="5" rx="2.5" />
+
+              <!-- avautuva paneeli -->
+              <rect class="d-win" x="228" y="80" width="176" height="120" rx="7" />
+              <text class="d-txt" x="240" y="97" style="font-weight:700">TREENI<tspan class="d-acc" style="font-weight:700">LOKI</tspan></text>
+              <text class="d-sub" x="240" y="112">Löytyi 3436 treeniä.</text>
+              <text class="d-sub" x="240" y="124">Tallennetaan kansioon…</text>
+              <rect class="d-chrome" x="240" y="134" width="152" height="6" rx="3" />
+              <rect class="d-acc" x="240" y="134" width="94" height="6" rx="3" />
+              <text class="d-sub" x="240" y="156">Tallennettu 2114</text>
+              <rect class="d-acc" x="240" y="168" width="152" height="20" rx="5" />
+              <text class="d-dark" x="316" y="181" text-anchor="middle" style="font-size:8px">Keskeytä</text>
+
+              <path class="d-arrow" marker-end="url(#ah2)" d="M176 72 C 196 78 204 80 224 88" />
+
+              <!-- osoitin kirjanmerkin oikeassa reunassa, tekstin ulkopuolella -->
+              <path d="M188 51 l0 17 l4.5 -4.5 l3 7 l3.5 -1.6 l-3 -6.6 l6 -0.6 z"
+                    fill="var(--fg)" stroke="#06121a" stroke-width="1" />
+            </svg>
+            <figcaption>
+              Klikkaus avaa paneelin sivun päälle. Sessiotunnistetta ei kysytä — painike
+              lukee sen Sports Trackerin omasta sivusta.
+            </figcaption>
+          </figure>
           <p>Jos ajo katkeaa — kone jämähtää, suljet välilehden, verkko pätkii — <b>klikkaa
             kirjanmerkkiä uudelleen ja valitse sama kansio.</b> Jo tallennetut treenit ohitetaan
             automaattisesti.</p>

@@ -123,3 +123,22 @@ test("export.html builds its bookmarklet from files that exist", async () => {
   }
   assert.match(html, /javascript:/, "the bookmarklet needs a javascript: URL");
 });
+
+test("export.html illustrates the drag and the click with accessible inline SVG", async () => {
+  const html = await read("export.html");
+  const figures = html.match(/<figure>/g) || [];
+  assert.equal(figures.length, 2, "expected one diagram per non-obvious step");
+
+  // Inline only: an <img> would be an extra request and could 404 on Pages.
+  assert.doesNotMatch(html, /<img\b/, "diagrams must stay inline SVG");
+
+  // Every diagram needs a title wired to aria-labelledby for screen readers.
+  const labelled = [...html.matchAll(/aria-labelledby="([^"]+)"/g)].map((m) => m[1]);
+  assert.equal(labelled.length, 2);
+  for (const id of labelled) {
+    assert.match(html, new RegExp(`<title id="${id}">[^<]+</title>`), `missing <title> for ${id}`);
+  }
+
+  // The diagrams use theme tokens rather than baked-in colours.
+  assert.match(html, /\.d-acc \{ fill: var\(--accent\)/, "diagrams should follow the site theme");
+});
