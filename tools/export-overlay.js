@@ -53,10 +53,19 @@
     "button.g{background:none;border:1px solid #1c2732;color:#5f7183}",
     "button.g:hover{background:#131c26;color:#dbe6ef}",
     ".f{margin-top:8px;color:#5f7183;font-size:11px}",
+    ".fmt{display:flex;gap:6px;margin-bottom:10px}",
+    ".fmt button{flex:1;background:none;border:1px solid #1c2732;color:#5f7183;border-radius:7px;",
+    "padding:7px 6px;font:inherit;font-size:11px;cursor:pointer;line-height:1.3}",
+    ".fmt button.on{border-color:#35d0e0;color:#35d0e0;background:#0d1a1f}",
+    ".fmt button b{display:block;font-size:12px;color:inherit}",
     "</style>",
     '<div class="p">',
     '<div class="h"><span class="t">TREENI<b>LOKI</b> · vienti</span><button class="x" id="x">×</button></div>',
-    '<div class="s" id="s">Valmiina. Vienti tallentaa koko treenihistoriasi GPX-tiedostoina.</div>',
+    '<div class="fmt" id="fmt">',
+    '<button data-fmt="compact"><b>Kevyt</b>yksi pieni tiedosto</button>',
+    '<button data-fmt="gpx"><b>GPX</b>alkuperäiset tiedostot</button>',
+    '</div>',
+    '<div class="s" id="s">Valmiina.</div>',
     '<div class="bar" id="bar"><div class="fill" id="fill"></div></div>',
     '<div class="n" id="n"></div>',
     '<button class="a" id="go">Valitse kansio ja aloita</button>',
@@ -150,6 +159,75 @@
     });
   }
 
+  var PROGRESS_KEY = "treeniloki:vienti-kesken";
+
+  /**
+   * Kevyt tapa: muunna jokainen GPX heti kompaktiksi tietueeksi ja unohda
+   * alkuperäinen. Muistissa on vain noin 0,5 kt per treeni, joten koko historia
+   * mahtuu pariin megatavuun — tämä on se mikä tekee viennistä mahdollisen
+   * Firefoxissa ja Safarissa, joista puuttuu kansioon kirjoitus.
+   *
+   * Jatkaminen ei voi nojata kansioon, joten kesken jäänyt ajo talletetaan
+   * selaimen localStorageen ja siivotaan pois kun vienti valmistuu.
+   */
+  function compactSink() {
+    var records = [];
+    var done = new Set(); // käsitellyt workoutKeyt, myös reidittömät
+
+    try {
+      var saved = JSON.parse(localStorage.getItem(PROGRESS_KEY) || "null");
+      if (saved && Array.isArray(saved.workouts)) {
+        records = saved.workouts;
+        (saved.done || []).forEach(function (k) { done.add(k); });
+      }
+    } catch (e) { /* vioittunut tila: aloitetaan puhtaalta pöydältä */ }
+
+    var quotaFull = false;
+    function persist() {
+      if (quotaFull) return;
+      try {
+        localStorage.setItem(PROGRESS_KEY, JSON.stringify({
+          workouts: records, done: Array.from(done),
+        }));
+      } catch (e) {
+        // Kiintiö täynnä: ajo jatkuu muistissa, mutta keskeytys menettäisi sen.
+        quotaFull = true;
+      }
+    }
+
+    var sinceSave = 0;
+    function tick() { if (++sinceSave >= 25) { sinceSave = 0; persist(); } }
+
+    return {
+      label: "yhdeksi kevyeksi tiedostoksi",
+      existing: new Set(),
+      resumed: records.length,
+      quotaFull: function () { return quotaFull; },
+      persist: persist,
+      shouldSkip: function (name, w) { return done.has(w.workoutKey); },
+      onFile: function (name, gpx, w) {
+        var parsed = parseGpx(gpx);
+        if (parsed) {
+          var summary = summarizeWorkout(parsed.points);
+          var merged = {};
+          for (var k in parsed) merged[k] = parsed[k];
+          for (var k2 in summary) merged[k2] = summary[k2];
+          records.push(toCompactRecord(merged, w.workoutKey));
+        }
+        done.add(w.workoutKey);
+        tick();
+      },
+      onNoTrack: function (w) { done.add(w.workoutKey); tick(); },
+      finish: async function () {
+        records.sort(function (a, b) { return a.d - b.d; });
+        var json = JSON.stringify(buildCompactFile(records));
+        triggerDownload(new Blob([json], { type: "application/json" }),
+          "treeniloki-" + core.formatDate(Date.now()) + ".json");
+        try { localStorage.removeItem(PROGRESS_KEY); } catch (e) { /* ei väliä */ }
+      },
+    };
+  }
+
   /** Vanha tapa: kerää muistiin, pakkaa lopuksi. Käytössä ilman File System Accessia. */
   function memorySink() {
     return {
@@ -191,7 +269,8 @@
     var sink;
     try {
       // Kansiovalinta on tehtävä suoraan klikkauksesta, muuten selain estää sen.
-      sink = hasFsAccess ? await directorySink() : memorySink();
+      sink = format === "compact" ? compactSink()
+        : hasFsAccess ? await directorySink() : memorySink();
     } catch (e) {
       status("Kansiota ei valittu.", "err");
       elGo.disabled = false;
@@ -258,7 +337,12 @@
     });
 
     if (result.cancelled) {
-      status("Keskeytetty. " + (hasFsAccess
+      if (sink.persist) sink.persist();
+      status("Keskeytetty. " + (format === "compact"
+        ? (sink.quotaFull()
+            ? "Selaimen muisti ei riittänyt välitallennukseen — seuraava ajo alkaa alusta."
+            : "Edistyminen on tallessa — klikkaa kirjanmerkkiä uudelleen jatkaaksesi.")
+        : hasFsAccess
         ? "Tallennetut tiedostot ovat kansiossa — klikkaa kirjanmerkkiä uudelleen jatkaaksesi siitä mihin jäit."
         : "Aloita alusta klikkaamalla kirjanmerkkiä uudelleen."), "err");
     } else {
@@ -291,9 +375,34 @@
     elGo.onclick = close;
   }
 
-  elFoot.textContent = hasFsAccess
-    ? "Tiedostot kirjoitetaan suoraan valitsemaasi kansioon."
-    : "Selaimestasi puuttuu kansioon kirjoitus — käytetään zip-pakettia. Chromella tai Edgellä vienti on kevyempi.";
+  // Oletus selaimen mukaan: kansioon kirjoittava selain saa alkuperäiset GPX:t,
+  // muut kevyen muodon — se on niissä ainoa tapa välttää gigatavun muistipallo.
+  var format = hasFsAccess ? "gpx" : "compact";
+
+  function setFormat(next) {
+    format = next;
+    Array.prototype.forEach.call(shadow.querySelectorAll("#fmt button"), function (b) {
+      b.className = b.getAttribute("data-fmt") === next ? "on" : "";
+    });
+    elGo.textContent = next === "compact" ? "Aloita vienti" : "Valitse kansio ja aloita";
+    if (next === "compact") {
+      status("Kevyt: koko historia yhtenä pienenä tiedostona, noin 0,5 kt treeniltä. " +
+        "Toimii kaikissa selaimissa ja latautuu puhelimeenkin.");
+      elFoot.textContent = "Reittiviiva ei säily — analyysi ei sitä käytä, mutta karttaa ei voi jälkikäteen piirtää.";
+    } else {
+      status("GPX: alkuperäiset tiedostot sellaisenaan." +
+        (hasFsAccess ? " Valitset kansion, ja jatkaminen toimii sen perusteella."
+                     : " Selaimesi ei tue kansioon kirjoitusta, joten tulee zip-paketti — tuhansilla treeneillä raskas."));
+      elFoot.textContent = hasFsAccess
+        ? "Tiedostot kirjoitetaan suoraan valitsemaasi kansioon."
+        : "Kevyt muoto on tässä selaimessa selvästi kevyempi vaihtoehto.";
+    }
+  }
+
+  Array.prototype.forEach.call(shadow.querySelectorAll("#fmt button"), function (b) {
+    b.addEventListener("click", function () { setFormat(b.getAttribute("data-fmt")); });
+  });
+  setFormat(format);
 
   elGo.onclick = function () { run(); };
 })();

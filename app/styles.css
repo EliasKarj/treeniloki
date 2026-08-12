@@ -81,4 +81,15 @@ canvas { width: 100%; display: block; }
 .pill.risk-low { background: #12261f; color: var(--accent); }
 .pill.risk-mod { background: #2c2718; color: var(--warn); }
 .pill.risk-high { background: #3a2513; color: var(--warn); }
-@media (max-width: 720px) { .keys { grid-template-columns: repeat(2, 1fr); } .health { grid-template-columns: 1fr; } }
+@media (max-width: 720px) {
+  .keys { grid-template-columns: repeat(2, 1fr); }
+  .health { grid-template-columns: 1fr; }
+  /* "Terveys & riski" kiertyi kahdelle riville ja jätti välilehtirivin vinoksi.
+     Kapeampi välistys pitää kaikki neljä yhdellä rivillä puhelimessa; jos ne
+     silti eivät mahdu, rivi vierii sivusuunnassa pystyrivityksen sijaan. */
+  #tabs { overflow-x: auto; scrollbar-width: none; }
+  #tabs::-webkit-scrollbar { display: none; }
+  #tabs .tab { padding: 9px 9px; font-size: 12px; white-space: nowrap; }
+  table { font-size: 12px; }
+  table th, table td { padding: 5px 4px; }
+}

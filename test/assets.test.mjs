@@ -114,14 +114,43 @@ test("the overlay uses the shared core rather than its own copy of the fetch log
   assert.doesNotMatch(source, /apiserver\/v1/, "API paths belong to core.js alone");
 });
 
-test("export.html builds its bookmarklet from files that exist", async () => {
+/** The source files export.html concatenates into the bookmarklet. */
+async function bookmarkletSources() {
   const html = await read("export.html");
-  const fetched = [...html.matchAll(/fetch\("([^"]+)"\)/g)].map((m) => m[1]);
-  assert.ok(fetched.length >= 2, "expected the page to assemble the bookmarklet from sources");
-  for (const ref of fetched) {
-    assert.ok(await exists(ref), `export.html fetches a missing file: ${ref}`);
+  const lists = [...html.matchAll(/const (CLASSIC|MODULES) = \[([^\]]+)\]/g)]
+    .flatMap((m) => [...m[2].matchAll(/"([^"]+)"/g)].map((x) => x[1]));
+  const overlay = html.match(/const OVERLAY = "([^"]+)"/)[1];
+  return { lists, overlay, html };
+}
+
+test("export.html builds its bookmarklet from files that exist", async () => {
+  const { lists, overlay, html } = await bookmarkletSources();
+  assert.ok(lists.length >= 3, "expected the page to assemble from several sources");
+  for (const ref of [...lists, overlay]) {
+    assert.ok(await exists(ref), `export.html references a missing file: ${ref}`);
   }
   assert.match(html, /javascript:/, "the bookmarklet needs a javascript: URL");
+});
+
+test("the modules folded into the bookmarklet stay concatenation-safe", async () => {
+  // A bookmarklet cannot use import, so export.html strips the `export` keyword
+  // and concatenates. That only works while these modules import nothing and use
+  // export forms the strip regex handles — this test is that contract.
+  const html = await read("export.html");
+  const modules = [...html.match(/const MODULES = \[([^\]]+)\]/)[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  assert.ok(modules.length > 0);
+
+  for (const file of modules) {
+    const source = await read(file);
+    assert.doesNotMatch(source, /(?:^|\n)\s*import\s/, `${file} must not import — it is inlined verbatim`);
+    assert.doesNotMatch(source, /(?:^|\n)export\s*\{/, `${file} must not use "export {…}" — the strip only handles declarations`);
+    assert.match(source, /(?:^|\n)export\s+(function|const|class|let|var)\b/, `${file} should export declarations`);
+
+    // The same transform export.html performs must leave valid, export-free code.
+    const stripped = source.replace(/^export\s+(?=(function|const|class|let|var)\b)/gm, "");
+    assert.doesNotMatch(stripped, /(?:^|\n)export\b/, `${file} still contains export after stripping`);
+    assert.doesNotThrow(() => new Function(stripped), `${file} is not valid as a classic script`);
+  }
 });
 
 test("export.html illustrates the drag and the click with accessible inline SVG", async () => {

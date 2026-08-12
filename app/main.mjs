@@ -1,4 +1,5 @@
 import { parseGpx } from "../src/parse/gpx.mjs";
+import { parseCompact } from "../src/parse/compact.mjs";
 import { summarizeWorkout } from "../src/analysis/workout.mjs";
 import { aggregate } from "../src/analysis/aggregate.mjs";
 import { splitBlocks, slopePerDay, comeback, activeFrequencyPerWeek } from "../src/analysis/breaks.mjs";
@@ -43,16 +44,41 @@ function buildModel(ws) {
   };
 }
 
+/** Stable identity for de-duplication: the Sports Tracker key when known, else the start time. */
+const identity = (w) => w.key || `d${w.date}`;
+
 async function addFiles(fileList) {
   const rejected = [];
+  const seen = new Set(workouts.map(identity));
+
+  const take = (workout) => {
+    const id = identity(workout);
+    if (seen.has(id)) return false; // same workout from a second file
+    seen.add(id);
+    workouts.push(workout);
+    return true;
+  };
+
   for (const file of fileList) {
     // Per-file guard: dropping hundreds of files should not lose everything
     // because one of them is truncated, unreadable or not a track at all.
     try {
       const text = await file.text();
+
+      // A compact export carries a whole history in one small file; GPX carries
+      // one workout. Both end up as the same workout objects.
+      const compact = parseCompact(text);
+      if (compact) {
+        const added = compact.filter(take).length;
+        if (!added) rejected.push(file.name);
+        continue;
+      }
+
       const parsed = parseGpx(text);
       if (!parsed) { rejected.push(file.name); continue; } // non-GPX / track-less
-      workouts.push({ id: file.name, ...parsed, ...summarizeWorkout(parsed.points) });
+      if (!take({ id: file.name, ...parsed, ...summarizeWorkout(parsed.points) })) {
+        rejected.push(file.name);
+      }
     } catch (e) {
       rejected.push(file.name);
       console.warn(`Treeniloki: ${file.name} ohitettiin — ${e.message}`);

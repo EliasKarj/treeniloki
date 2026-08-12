@@ -46,9 +46,9 @@ kirjautua** — avaa vain osoite selaimessa.
 1. Avaa **[vientisivu](https://eliaskarj.github.io/treeniloki/export.html)** ja raahaa painike
    kirjanmerkkipalkkiin *(vain kerran — sivulla on havainnekuvat)*
 2. Kirjaudu [sports-tracker.com](https://www.sports-tracker.com)iin, klikkaa kirjanmerkkiä ja
-   valitse kansio johon treenit tallennetaan
-3. Avaa **[analyysisivu](https://eliaskarj.github.io/treeniloki/)** ja raahaa kansion
-   GPX-tiedostot pudotusalueeseen
+   valitse muoto — *Kevyt* antaa yhden pienen tiedoston, *GPX* alkuperäiset
+3. Avaa **[analyysisivu](https://eliaskarj.github.io/treeniloki/)** ja raahaa saamasi tiedosto
+   tai tiedostot pudotusalueeseen
 
 Seuraavilla kerroilla riittää kohta 2 uusien treenien hakemiseen ja kohta 3.
 
@@ -69,7 +69,7 @@ Seuraavilla kerroilla riittää kohta 2 uusien treenien hakemiseen ja kohta 3.
 | Kaaviot jäävät tyhjiksi | Dataa on liian vähän. Osa laskuista vaatii ≥ 3 treeniä, VO₂max ≥ 3 km:n lenkkejä. |
 | Sykealueet puuttuvat | GPX-tiedostoissa ei ole sykedataa. Kaikki muu toimii silti. |
 | Kirjanmerkki ei tee mitään | Et ole kirjautuneena sports-tracker.comiin, tai olet väärällä sivustolla. |
-| Vienti tarjoaa zip-pakettia | Selaimestasi puuttuu kansioon kirjoitus. Käytä Chromea tai Edgeä, erityisesti jos treenejä on tuhansia. |
+| Vienti tarjoaa zip-pakettia | Valitsit GPX-muodon selaimessa jossa ei ole kansioon kirjoitusta. Valitse *Kevyt*, tai käytä Chromea/Edgeä. |
 
 ---
 
@@ -80,8 +80,37 @@ raahaat sen kerran palkkiin, ja sen jälkeen vienti on yhden klikkauksen pääss
 tarvita. Vaiheet ovat yllä kohdassa [Käyttöönotto](#käyttöönotto); tässä on se mitä konepellin
 alla tapahtuu ja miksi.
 
-Tiedostot nimetään muotoon `YYYY-MM-DD_<laji>_<workoutKey>.gpx`. Ilman GPS-reittiä olevat
-treenit (käsin lisätyt, sisäjuoksut) ohitetaan.
+### Kaksi muotoa
+
+Paneeli kysyy aluksi kumman haluat. Oletus valitaan selaimen mukaan.
+
+| | **Kevyt** | **GPX** |
+|---|---|---|
+| Tulos | yksi tiedosto | yksi tiedosto per treeni |
+| Koko, 3436 treeniä | **~1,6 MB** | ~2,3 GB |
+| Toimii | kaikissa selaimissa | parhaiten Chrome/Edge |
+| Puhelimeen | kyllä | ei käytännössä |
+| Reittiviiva säilyy | ei | kyllä |
+
+Tiedostot nimetään GPX-muodossa `YYYY-MM-DD_<laji>_<workoutKey>.gpx`, kevyt muoto on
+`treeniloki-YYYY-MM-DD.json`. Molemmat raahataan analyysisivulle samalla tavalla. Ilman
+GPS-reittiä olevat treenit (käsin lisätyt, sisäjuoksut) ohitetaan.
+
+> **▸ Miksi kevyt muoto on tuhat kertaa pienempi:** analyysi ei tarvitse reittipisteitä.
+> Se tarvitsee matkan, keston, nousumetrit ja tahdin — jotka lasketaan kertaalleen —
+> ja sykkeen aikajakauman. Mitattuna: 10 km lenkki sekunnin näytteistyksellä on GPX:nä
+> **676 kt**, kompaktina tietueena **0,5 kt**.
+>
+> **▸ Miksi syke tallennetaan histogrammina eikä valmiina alueina:** sykealueet lasketaan
+> koko historian korkeimmasta havainnosta, jota ei voi tietää yhtä treeniä vietäessä. Kun
+> tallennetaan minuutit lyöntitaajuutta kohti, alueet voidaan laskea uudelleen mistä tahansa
+> maksimista — täsmälleen kuten reittipisteistä. Tämä on testattu vertaamalla molempia
+> muotoja rinnakkain.
+>
+> **▸ Mitä menetetään, rehellisesti:** reittiviiva katoaa. Sovellus ei piirrä karttaa, joten
+> mitään näkyvää ei häviä, mutta karttaa ei voi jälkikäteen rakentaa siitä datasta. Lisäksi
+> lasketut arvot jäätyvät vientihetkeen: jos nousumetrien kynnys joskus muuttuu, vanhoja
+> tiedostoja ei voi laskea uudelleen. Siksi kevyt muoto on **vaihtoehto GPX:lle, ei korvaaja.**
 
 **Jos ajo katkeaa** — kone jämähtää, suljet välilehden, verkko pätkii — klikkaa kirjanmerkkiä
 uudelleen ja valitse sama kansio. Jo tallennetut ohitetaan automaattisesti.
@@ -111,7 +140,7 @@ uudelleen ja valitse sama kansio. Jo tallennetut ohitetaan automaattisesti.
 >
 > **▸ Miksi koko koodi on kirjanmerkin sisällä:** vaihtoehto olisi ladata skripti
 > ulkopuoliselta palvelimelta, mutta silloin Sports Trackerin CSP voisi estää sen — ja sivulle
-> injektoitaisiin kolmannen osapuolen koodia. Itsenäinen kirjanmerkki (29 kt) välttää molemmat.
+> injektoitaisiin kolmannen osapuolen koodia. Itsenäinen kirjanmerkki (36 kt) välttää molemmat.
 >
 > **▸ Miksi suoraan kansioon:** File System Access API kirjoittaa jokaisen GPX:n heti levylle,
 > jolloin muistinkulutus ei riipu treenien määrästä. Vanha zip-tapa keräsi kaikki muistiin:
@@ -119,11 +148,25 @@ uudelleen ja valitse sama kansio. Jo tallennetut ohitetaan automaattisesti.
 > gigatavu. Sivutuotteena jatkaminen muuttui ilmaiseksi — valmis tiedosto kansiossa *on* tieto
 > siitä mikä on tehty.
 
-### Selaintuki
+### Selaintuki ja puhelin
 
-Suoraan kansioon kirjoittaminen vaatii **Chromen tai Edgen**. Firefoxissa ja Safarissa painike
-toimii, mutta putoaa takaisin zip-pakettiin ja siten muistiin — se käy raskaaksi jos treenejä
-on tuhansia.
+| Selain | Kevyt muoto | GPX-muoto |
+|--------|-------------|-----------|
+| Chrome, Edge | toimii | suoraan kansioon, jatkaminen automaattinen |
+| **Firefox, Safari** | **toimii, suositus** | zip-paketti — raskas tuhansilla treeneillä |
+
+Firefoxissa ja Safarissa ei ole kansioon kirjoitusta, joten GPX-vienti joutuu keräämään
+kaiken muistiin zip-pakkausta varten. Kevyt muoto välttää sen kokonaan: muistissa on vain
+noin 0,5 kt treeniltä, ja tulos on yksi pieni tiedosto. Siksi se on näissä selaimissa oletus.
+
+**Puhelin.** Analyysisivu toimii puhelimessa sellaisenaan — ei vaakavieritystä, kaaviot
+skaalautuvat, taulukko on luettava. Kevyt tiedosto (~1,6 MB) latautuu puhelimeen ongelmitta,
+joten **historian katselu puhelimella onnistuu hyvin.**
+
+Itse vienti on puhelimella hankalampaa, eikä se johdu tiedostokoosta vaan skriptin
+käynnistämisestä: iOS Safarissa kirjanmerkki toimii suosikkien kautta kohtalaisesti, mutta
+Android Chromessa kirjanmerkin nimi pitäisi kirjoittaa osoiteriville. Käytännön suositus on
+**vie kerran koneella, katsele puhelimella** — vienti on kertatyö, katselu jatkuvaa.
 
 ### Vaihtoehto: Node-komentorivi
 
@@ -528,7 +571,7 @@ Testit vaativat **Node.js 22+**. Riippuvuuksia ei tarvitse asentaa — kaikki k�
 sisäänrakennettua `node:test`-kirjastoa.
 
 ```bash
-npm test              # koko testisarja, 230 testiä
+npm test              # koko testisarja, 251 testiä
 npm run test:watch    # ajaa uudelleen kun tiedostot muuttuvat
 npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 ```
@@ -543,10 +586,11 @@ npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 | `test/render.test.mjs` | `app/render/*` — kortit, taulukko, kaaviot, tavoitteet | 23 |
 | `tools/export-cli.test.mjs` | Node-CLI: argumentit, levylle kirjoitus, jatkaminen | 24 |
 | `test/pipeline.test.mjs` | Koko putki GPX-tekstistä valmiiseen malliin | 13 |
-| `test/assets.test.mjs` | Sivujen eheys: viittaukset, moduuliverkko, havainnekuvat | 11 |
-| `test/interaction.test.mjs` | Pudotus, välilehdet, tavoite, vioittuneiden ohitus | 10 |
+| `test/assets.test.mjs` | Sivujen eheys, moduuliverkko, kirjanmerkin liitettävyys | 12 |
+| `test/interaction.test.mjs` | Pudotus, välilehdet, tavoite, kevyt muoto, vioittuneet | 13 |
+| `test/compact.test.mjs` | Kevyt muoto: riittävyys GPX:ään verrattuna, kelvoton data | 17 |
 | `test/hostile.test.mjs` | Vihamielinen ja vioittunut GPX: XSS, XXE, ReDoS, NaN, kaatumiset | 15 |
-| | **Yhteensä** | **230** |
+| | **Yhteensä** | **251** |
 
 Kattavuus lähdekoodista: **rivit 94 %, haaraumat 94 %, funktiot 96 %**. Kattamatta jää
 export-skriptin selainliima (JSZip-lataus ja tiedoston tallennus), jota ei voi ajaa Nodessa.
@@ -588,7 +632,9 @@ app/
   styles.css            Ulkoasu
   render/               Piirtokerros — verdict, overview, charts, health, table
 src/
-  parse/gpx.mjs         GPX-jäsennin (regex-pohjainen, toimii sekä selaimessa että Nodessa)
+  parse/
+    gpx.mjs             GPX-jäsennin (regex-pohjainen, toimii sekä selaimessa että Nodessa)
+    compact.mjs         Kevyt vientimuoto: sarjoitus ja luku
   analysis/             Puhdas laskentalogiikka, ei DOM-riippuvuuksia
     workout.mjs           matka, kesto, nousu, tahti
     aggregate.mjs         kokonaissummat ja keskiarvot

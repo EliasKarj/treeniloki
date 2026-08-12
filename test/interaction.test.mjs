@@ -150,3 +150,50 @@ test("a clean batch clears the skipped-files note", async () => {
   await waitFor(() => dom.byId["hd-meta"].textContent !== countBefore, "the file to be added");
   assert.equal(dom.byId["drop-note"].textContent, "", "the note must not linger");
 });
+
+test("dropping a compact export loads a whole history from one file", async () => {
+  const now = Date.now();
+  const records = Array.from({ length: 12 }, (_, i) => ({
+    k: `w${i}`, d: daysAgo(40 - i * 3, now), n: `Kompakti ${i + 1}`,
+    km: 10, min: 60, el: 20, hr: { 130: 45, 150: 15 },
+  }));
+  const file = { treeniloki: 1, exported: new Date().toISOString(), workouts: records };
+
+  const before = dom.byId["hd-meta"].textContent;
+  dom.byId.drop.dispatch("drop", {
+    dataTransfer: { files: [fakeFile("treeniloki-2026-08-12.json", JSON.stringify(file))] },
+  });
+  await waitFor(() => dom.byId["hd-meta"].textContent !== before, "the compact file to load");
+
+  assert.match(dom.byId["tab-workouts"].html(), /Kompakti 1/);
+  assert.match(dom.byId["tab-health"].html(), /Sykealueet/, "HR zones must work without points");
+  assert.doesNotMatch(dom.byId["tab-health"].html(), /Ei sykedataa/, "the histogram should supply HR");
+  assert.equal(dom.byId["drop-note"].textContent, "", "a valid compact file is not a rejection");
+});
+
+test("the same compact file dropped twice does not duplicate workouts", async () => {
+  const now = Date.now();
+  const file = JSON.stringify({
+    treeniloki: 1,
+    workouts: [{ k: "dupli", d: daysAgo(2, now), n: "Kerran", km: 8, min: 48, el: 0 }],
+  });
+  const first = dom.byId["hd-meta"].textContent;
+  dom.byId.drop.dispatch("drop", { dataTransfer: { files: [fakeFile("a.json", file)] } });
+  await waitFor(() => dom.byId["hd-meta"].textContent !== first, "the first load");
+  const after = dom.byId["hd-meta"].textContent;
+
+  dom.byId.drop.dispatch("drop", { dataTransfer: { files: [fakeFile("a-kopio.json", file)] } });
+  await new Promise((r) => setTimeout(r, 60));
+  assert.equal(dom.byId["hd-meta"].textContent, after, "the count must not grow");
+  assert.match(dom.byId["drop-note"].textContent, /1 tiedostoa ohitettiin/);
+});
+
+test("a JSON file that is not a compact export is rejected, not misread", async () => {
+  const before = dom.byId["hd-meta"].textContent;
+  dom.byId.drop.dispatch("drop", {
+    dataTransfer: { files: [fakeFile("muu.json", JSON.stringify({ jotain: "muuta" }))] },
+  });
+  await new Promise((r) => setTimeout(r, 60));
+  assert.equal(dom.byId["hd-meta"].textContent, before);
+  assert.match(dom.byId["drop-note"].textContent, /ohitettiin/);
+});

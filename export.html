@@ -273,15 +273,35 @@
         return;
       }
 
+      // Kirjanmerkki rakennetaan lähdetiedostoista latautuessa, joten se pysyy
+      // automaattisesti ajan tasalla ilman erillistä käännösvaihetta.
+      //
+      // Analyysipuolen moduulit ovat ES-moduuleja, mutta kirjanmerkki ei voi
+      // käyttää importtia. Nämä kolme ovat tarkoituksella riippumattomia — ei
+      // yhtään importtia — joten pelkkä "export"-sanan poisto riittää tekemään
+      // niistä liitettäviä. test/assets.test.mjs vartioi tuota sopimusta.
+      const CLASSIC = ["tools/core.js"];
+      const MODULES = ["src/parse/gpx.mjs", "src/analysis/workout.mjs", "src/parse/compact.mjs"];
+      const OVERLAY = "tools/export-overlay.js";
+
+      const get = async (path) => {
+        const r = await fetch(path);
+        if (!r.ok) throw new Error(path + " " + r.status);
+        return r.text();
+      };
+
       let source;
       try {
-        // Kirjanmerkki rakennetaan lähdetiedostoista latautuessa, joten se pysyy
-        // automaattisesti ajan tasalla ilman erillistä käännösvaihetta.
-        const [core, overlay] = await Promise.all([
-          fetch("tools/core.js").then((r) => { if (!r.ok) throw new Error("core.js " + r.status); return r.text(); }),
-          fetch("tools/export-overlay.js").then((r) => { if (!r.ok) throw new Error("export-overlay.js " + r.status); return r.text(); }),
+        const [classic, modules, overlay] = await Promise.all([
+          Promise.all(CLASSIC.map(get)),
+          Promise.all(MODULES.map(get)),
+          get(OVERLAY),
         ]);
-        source = core + "\n" + overlay;
+        source = [
+          ...classic,
+          ...modules.map((m) => m.replace(/^export\s+(?=(function|const|class|let|var)\b)/gm, "")),
+          overlay,
+        ].join("\n");
       } catch (e) {
         fail("Skriptin lataus epäonnistui: " + e.message);
         return;
