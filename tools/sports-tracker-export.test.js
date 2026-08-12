@@ -46,3 +46,33 @@ test("fetchGpx returns null for non-ok or track-less GPX", async () => {
   assert.equal(await fetchGpx("x", async () => ({ ok: false, status: 404 }), {}), null);
   assert.equal(await fetchGpx("y", async () => ({ ok: true, text: async () => "<gpx></gpx>" }), {}), null);
 });
+
+test("fetchGpx does not retry a clean non-ok response", async () => {
+  let calls = 0;
+  const fakeFetch = async () => {
+    calls++;
+    return { ok: false, status: 403 };
+  };
+  const gpx = await fetchGpx("x", fakeFetch, {}, async () => {});
+  assert.equal(gpx, null);
+  assert.equal(calls, 1);
+});
+
+test("fetchGpx retries a thrown network error and succeeds once the network recovers", async () => {
+  let calls = 0;
+  const fakeFetch = async () => {
+    calls++;
+    if (calls < 2) throw new Error("network drop");
+    return { ok: true, text: async () => "<gpx><trkpt lat=\"1\" lon=\"2\"/></gpx>" };
+  };
+  const gpx = await fetchGpx("x", fakeFetch, {}, async () => {});
+  assert.match(gpx, /<trkpt/);
+  assert.equal(calls, 2);
+});
+
+test("fetchGpx throws after exhausting retries on a persistent network error", async () => {
+  const fakeFetch = async () => {
+    throw new Error("network drop");
+  };
+  await assert.rejects(() => fetchGpx("x", fakeFetch, {}, async () => {}), /network drop/);
+});
