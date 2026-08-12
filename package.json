@@ -7,8 +7,9 @@
     "node": ">=22"
   },
   "scripts": {
-    "test": "node --test \"test/*.test.mjs\" \"tools/*.test.js\"",
-    "test:watch": "node --test --watch \"test/*.test.mjs\" \"tools/*.test.js\"",
-    "test:coverage": "node --test --experimental-test-coverage --test-coverage-exclude=\"test/**\" --test-coverage-exclude=\"tools/*.test.js\" --test-coverage-lines=90 --test-coverage-branches=90 --test-coverage-functions=90 \"test/*.test.mjs\" \"tools/*.test.js\""
+    "test": "node --test \"test/*.test.mjs\" \"tools/*.test.js\" \"tools/*.test.mjs\"",
+    "test:watch": "node --test --watch \"test/*.test.mjs\" \"tools/*.test.js\" \"tools/*.test.mjs\"",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-exclude=\"test/**\" --test-coverage-exclude=\"tools/*.test.*js\" --test-coverage-lines=90 --test-coverage-branches=90 --test-coverage-functions=90 \"test/*.test.mjs\" \"tools/*.test.js\" \"tools/*.test.mjs\"",
+    "export": "node tools/export-cli.mjs"
   }
 }

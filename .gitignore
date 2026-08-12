@@ -44,3 +44,7 @@ coverage/
 # brainstorm mockups & agent build scaffolding
 .superpowers/
 docs/superpowers/
+
+# exported workout data — personal, and potentially thousands of files
+gpx-export/
+*.gpx

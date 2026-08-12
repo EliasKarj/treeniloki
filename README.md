@@ -80,9 +80,20 @@ painamalla `Ctrl+C` terminaalissa.
 
 ## Mistä GPX-tiedostot?
 
-Sports Trackerissa ei ole joukkovientiä. Repo sisältää konsoliskriptin, joka lataa koko
-treenihistoriasi GPX-tiedostoina yhtenä zip-pakettina — käyttäen olemassa olevaa
-kirjautumistasi, ei salasanaa.
+Sports Trackerissa ei ole joukkovientiä. Repo sisältää kaksi vientityökalua, jotka molemmat
+käyttävät olemassa olevaa kirjautumistasi eivätkä salasanaa. **Valitse historian pituuden
+mukaan:**
+
+| Historia | Työkalu | Miksi |
+|----------|---------|-------|
+| alle ~500 treeniä | Konsoliskripti | Ei asennusta, liitä ja aja |
+| yli ~500 treeniä, tai heikko kone | **Node-CLI** | Vakio muistinkulutus, jatkuu keskeytyksestä itsestään |
+
+Tiedostot nimetään molemmissa muotoon `YYYY-MM-DD_<laji>_<workoutKey>.gpx`. Ilman GPS-reittiä
+olevat treenit (käsin lisätyt, sisäjuoksut) ohitetaan. Yhteenveto tulostaa löydetyt
+`activityId`:t — voit lisätä ne `ACTIVITY_NAMES`-listaan saadaksesi selkeämmät lajinimet.
+
+### Vaihtoehto A: konsoliskripti
 
 1. Kirjaudu sisään osoitteessa <https://www.sports-tracker.com>
 2. Avaa selaimen kehittäjätyökalut → **Console** (`F12`)
@@ -90,11 +101,47 @@ kirjautumistasi, ei salasanaa.
 4. Seuraa etenemistä lokista — `sports-tracker-export-YYYY-MM-DD.zip` latautuu lopuksi
 5. Pura zip ja raahaa GPX-tiedostot Treenilokin pudotusalueeseen
 
-Tiedostot nimetään muotoon `YYYY-MM-DD_<laji>_<workoutKey>.gpx`. Ilman GPS-reittiä olevat
-treenit (käsin lisätyt, sisäjuoksut) ohitetaan. Yhteenveto tulostaa löydetyt `activityId`:t —
-voit lisätä ne skriptin `ACTIVITY_NAMES`-listaan saadaksesi selkeämmät lajinimet.
+### Vaihtoehto B: Node-CLI (pitkä historia, epävakaa kone)
 
-### Jos ajo katkeaa kesken
+Hae sessiotunniste kerran selaimen konsolista sports-tracker.comissa:
+
+```js
+localStorage.getItem("sessionkey")
+```
+
+Aja sitten repon juuressa:
+
+```bash
+ST_SESSION_KEY=<avain> npm run export
+```
+
+GPX:t ilmestyvät kansioon `./gpx-export`. Valitsimet: `--out <kansio>`, `--limit <n>`,
+`--throttle <ms>`, `--force`, `--help`.
+
+**Keskeytynyt ajo jatkuu ajamalla sama komento uudelleen** — levyllä jo olevat treenit
+ohitetaan, eikä mitään erillistä jatkamiskikkaa tarvita.
+
+> **▸ Miksi erillinen CLI:** konsoliversio kerää kaikki GPX:t muistiin ennen kuin pakkaa ne
+> zipiksi, joten muistinkulutus kasvaa lineaarisesti historian pituuden mukana. Mitattuna
+> 210 kt:n keskikokoisilla tiedostoilla: 200 treeniä → 46 MB, 400 → 88 MB, 800 → 173 MB.
+> Kolmella tuhannella treenillä puhutaan lähes gigatavusta, minkä päälle JSZip rakentaa
+> vielä oman kopionsa. CLI kirjoittaa jokaisen tiedoston levylle heti, jolloin lukema pysyy
+> **4 MB:ssä riippumatta treenien määrästä**.
+>
+> **▸ Miksi levylle kirjoittaminen korjaa myös jatkamisen:** kun jokainen valmis treeni on
+> oma tiedostonsa, seuraava ajo näkee suoraan mitä on jo tehty. Kirjoitus tehdään ensin
+> `.part`-tiedostoon ja nimetään vasta sitten uudelleen, joten kesken kirjoituksen kuollut
+> prosessi ei jätä katkennutta tiedostoa jonka jatkaminen luulisi valmiiksi.
+>
+> **▸ Miksi tämä on mahdollista:** Sports Trackerin API tunnistaa käyttäjän
+> `STTAuthorization`-otsakkeella, ei selainistuntoon sidotulla evästeellä. Haut eivät siis
+> ole sidottuja selaimeen, kunhan tunniste on mukana.
+>
+> **▸ Miksi ei pilveen:** sessiotunniste on käytännössä pääsy tiliisi. Sen tallentaminen
+> esimerkiksi GitHub-secretiksi jättäisi sen sinne kunnes kirjaudut ulos, eikä hyöty omaan
+> koneeseen nähden ole sen arvoinen.
+
+### Jos konsoliskriptin ajo katkeaa kesken
 
 Yksittäiset GPX-haut yrittävät automaattisesti uudelleen verkkovirheen sattuessa (3 yritystä,
 kasvava odotus), eikä yksi epäonnistunut treeni enää kaada koko ajoa. Jos koko ajo silti
@@ -460,7 +507,7 @@ Testit vaativat **Node.js 22+**. Riippuvuuksia ei tarvitse asentaa — kaikki k�
 sisäänrakennettua `node:test`-kirjastoa.
 
 ```bash
-npm test              # koko testisarja, 170 testiä
+npm test              # koko testisarja, 187 testiä
 npm run test:watch    # ajaa uudelleen kun tiedostot muuttuvat
 npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 ```
@@ -475,7 +522,8 @@ npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 | `test/pipeline.test.mjs` | Koko putki GPX-tekstistä valmiiseen malliin | 13 |
 | `test/interaction.test.mjs` | Tiedostojen pudotus, välilehdet, tavoitteen vaihto | 8 |
 | `test/assets.test.mjs` | `index.html`:n viittaukset ja moduuliverkko | 7 |
-| `tools/sports-tracker-export.test.js` | Export-skripti: uudelleenyritys, jatkaminen, virheensieto | 23 |
+| `tools/sports-tracker-export.test.js` | Konsoliskripti: uudelleenyritys, jatkaminen, virheensieto | 23 |
+| `tools/export-cli.test.mjs` | Node-CLI: argumentit, levylle kirjoitus, jatkaminen | 17 |
 
 Kattavuus lähdekoodista: **rivit 94 %, haaraumat 94 %, funktiot 96 %**. Kattamatta jää
 export-skriptin selainliima (JSZip-lataus ja tiedoston tallennus), jota ei voi ajaa Nodessa.
@@ -534,7 +582,9 @@ src/
 test/
   *.test.mjs            Analyysimoduulien, renderin ja putken testit
   helpers/              DOM-stub ja GPX-fixturet (ei riippuvuuksia)
-tools/                  Sports Tracker -export-skripti ja sen testit
+tools/
+  sports-tracker-export.js   Konsoliskripti (selain) + sen testit
+  export-cli.mjs             Node-CLI pitkälle historialle + sen testit
 .github/workflows/      CI: testit, kattavuus, julkaisu
 ```
 
