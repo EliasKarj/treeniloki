@@ -531,9 +531,11 @@ src/
     verdict.mjs           yläpalkin tilannearvio
     coaching.mjs          valmennusvinkkien johtaminen
     goals.mjs             tavoitteet ja vinkkien painotus
-test/                   Analyysimoduulien testit
+test/
+  *.test.mjs            Analyysimoduulien, renderin ja putken testit
+  helpers/              DOM-stub ja GPX-fixturet (ei riippuvuuksia)
 tools/                  Sports Tracker -export-skripti ja sen testit
-docs/                   Suunnitelmat ja tekniset speksit
+.github/workflows/      CI: testit, kattavuus, julkaisu
 ```
 
 ---

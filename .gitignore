@@ -41,5 +41,6 @@ coverage/
 .turbo/
 *.tsbuildinfo
 
-# brainstorm mockups
+# brainstorm mockups & agent build scaffolding
 .superpowers/
+docs/superpowers/
