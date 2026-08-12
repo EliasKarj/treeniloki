@@ -180,3 +180,13 @@ test("export.html illustrates the drag and the click with accessible inline SVG"
   // The diagrams use theme tokens rather than baked-in colours.
   assert.match(html, /\.d-acc \{ fill: var\(--accent\)/, "diagrams should follow the site theme");
 });
+
+test("export.html documents the mobile route it actually supports", async () => {
+  const html = await read("export.html");
+  // Kopiointipainike on se, mikä tekee iOS-asennuksen mahdolliseksi: osoite on
+  // liitettävä kirjanmerkkiin käsin. Ohje ilman painiketta olisi hyödytön.
+  assert.match(html, /id="copybm"/, "the iOS steps depend on the copy button existing");
+  assert.match(html, /Pikakomennot/, "the better iOS route should be mentioned");
+  assert.match(html, /Androidilla/, "the harder platform should be named honestly");
+  assert.match(html, /ensivienti koneella/, "the practical recommendation must be there");
+});

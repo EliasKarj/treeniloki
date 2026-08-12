@@ -184,10 +184,15 @@ noin 0,5 kt treeniltä, ja tulos on yksi pieni tiedosto. Siksi se on näissä se
 skaalautuvat, taulukko on luettava. Kevyt tiedosto (~1,6 MB) latautuu puhelimeen ongelmitta,
 joten **historian katselu puhelimella onnistuu hyvin.**
 
-Itse vienti on puhelimella hankalampaa, eikä se johdu tiedostokoosta vaan skriptin
-käynnistämisestä: iOS Safarissa kirjanmerkki toimii suosikkien kautta kohtalaisesti, mutta
-Android Chromessa kirjanmerkin nimi pitäisi kirjoittaa osoiteriville. Käytännön suositus on
-**vie kerran koneella, katsele puhelimella** — vienti on kertatyö, katselu jatkuvaa.
+**Vienti puhelimella onnistuu, iPhonella jopa hyvin.** Vientisivulla on omat ohjeensa: Safari
+tukee kirjanmerkkejä oikeasti, ja *Pikakomennot*-sovelluksen "Suorita JavaScript verkkosivulla"
+tekee viennistä yhden napautuksen jakovalikosta. Androidilla tilanne on nurinkurinen —
+Chromessa kirjanmerkin laukaisu vaatii sen *nimen* kirjoittamista osoiteriville.
+
+> **▸ Miksi ensivienti kannattaa silti tehdä koneella:** este ei ole käynnistäminen vaan kesto.
+> Tuhansien treenien ensivienti kestää noin puoli tuntia, ja puhelin keskeyttää
+> taustavälilehden herkästi — ruutu pitäisi pitää päällä koko ajan. Sen jälkeen puhelin
+> riittää: jatkoajossa haettavaa on vain muutama uusi treeni, koska vanhat ohitetaan.
 
 ### Vaihtoehto: Node-komentorivi
 
@@ -592,7 +597,7 @@ Testit vaativat **Node.js 22+**. Riippuvuuksia ei tarvitse asentaa — kaikki k�
 sisäänrakennettua `node:test`-kirjastoa.
 
 ```bash
-npm test              # koko testisarja, 259 testiä
+npm test              # koko testisarja, 260 testiä
 npm run test:watch    # ajaa uudelleen kun tiedostot muuttuvat
 npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 ```
@@ -607,11 +612,11 @@ npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 | `test/render.test.mjs` | `app/render/*` — kortit, taulukko, kaaviot, tavoitteet | 23 |
 | `tools/export-cli.test.mjs` | Node-CLI: argumentit, levylle kirjoitus, jatkaminen | 24 |
 | `test/pipeline.test.mjs` | Koko putki GPX-tekstistä valmiiseen malliin | 13 |
-| `test/assets.test.mjs` | Sivujen eheys, moduuliverkko, kirjanmerkin liitettävyys | 13 |
+| `test/assets.test.mjs` | Sivujen eheys, moduuliverkko, kirjanmerkin liitettävyys | 14 |
 | `test/interaction.test.mjs` | Pudotus, välilehdet, tavoite, kevyen tallennus, vioittuneet | 16 |
 | `test/compact.test.mjs` | Kevyt muoto: riittävyys GPX:ään verrattuna, tallennus, kelvoton data | 21 |
 | `test/hostile.test.mjs` | Vihamielinen ja vioittunut GPX: XSS, XXE, ReDoS, NaN, kaatumiset | 15 |
-| | **Yhteensä** | **259** |
+| | **Yhteensä** | **260** |
 
 Kattavuus lähdekoodista: **rivit 94 %, haaraumat 94 %, funktiot 96 %**. Kattamatta jää
 export-skriptin selainliima (JSZip-lataus ja tiedoston tallennus), jota ei voi ajaa Nodessa.

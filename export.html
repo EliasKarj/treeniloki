@@ -229,12 +229,46 @@
     </div>
 
     <div class="panel">
-      <div class="lbl" style="margin-bottom:8px">Selaintuki</div>
+      <div class="lbl" style="margin-bottom:8px">Selaintuki ja puhelin</div>
       <p class="sub" style="margin-top:0">
-        Suoraan kansioon kirjoittaminen vaatii <b>Chromen tai Edgen</b>. Firefoxissa ja
-        Safarissa painike toimii, mutta putoaa takaisin zip-pakettiin: se kerää tiedostot
-        muistiin, mikä voi käydä raskaaksi jos treenejä on tuhansia.
+        <b>Kevyt</b>-muoto toimii kaikissa selaimissa. <b>GPX</b>-muoto kirjoittaa suoraan
+        kansioon vain Chromessa ja Edgessä; Firefoxissa ja Safarissa se putoaa zip-pakettiin,
+        joka kerää kaiken muistiin ja käy raskaaksi tuhansilla treeneillä. Siksi kevyt muoto
+        on niissä oletus.
       </p>
+
+      <details class="help">
+        <summary>Puhelimella · iOS ja Android</summary>
+        <p class="hint">
+          <b>iPhonella tämä onnistuu</b> — Safari tukee kirjanmerkkejä oikeasti. Asennus on
+          vähän kömpelö, koska osoite pitää liittää käsin:
+        </p>
+        <ol>
+          <li>Paina yllä <b>”Kopioi kirjanmerkin osoite”</b></li>
+          <li>Lisää mikä tahansa sivu kirjanmerkkeihin (jakovalikko → Lisää kirjanmerkki)</li>
+          <li>Muokkaa juuri luotua kirjanmerkkiä ja <b>korvaa sen osoite</b> liittämällä leikepöydältä</li>
+          <li>Nimeä se esim. ”Vie treenit”</li>
+          <li>Mene sports-tracker.comiin, avaa suosikit ja napauta kirjanmerkkiä</li>
+        </ol>
+        <p class="hint">
+          Siistimpi tapa on <b>Pikakomennot</b>-sovelluksen toiminto ”Suorita JavaScript
+          verkkosivulla”: liitä sama koodi siihen, niin vienti ilmestyy Safarin jakovalikkoon
+          ja on yhden napautuksen päässä.
+        </p>
+        <p class="hint">
+          <b>Androidilla</b> tilanne on nurinkurinen: Chromessa kirjanmerkin laukaisu vaatii
+          sen <i>nimen</i> kirjoittamista osoiteriville, mikä on kömpelöä. Firefox Androidilla
+          onnistuu laajennuksilla helpommin.
+        </p>
+        <p class="hint">
+          <b>Käytännön varaus:</b> este ei ole käynnistäminen vaan kesto. Tuhansien treenien
+          ensivienti kestää noin puoli tuntia, ja puhelin keskeyttää taustavälilehden
+          herkästi — ruutu pitäisi pitää päällä koko ajan. Siksi:
+          <b>tee ensivienti koneella ja päivitä puhelimella.</b> Jatkoajossa haettavaa on
+          vain muutama uusi treeni, ja se sujuu puhelimella hyvin.
+        </p>
+      </details>
+
       <details class="help">
         <summary>Vaihtoehto ilman kirjanmerkkiä · konsoli</summary>
         <p class="hint">Jos et halua käyttää kirjanmerkkiä, sama skripti toimii liittämällä se
