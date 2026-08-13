@@ -534,9 +534,16 @@ leikkautunut sarake olisi huonompi kuin vieritettävä.
 
 Taulukko kaikista treeneistä, uusin ylimpänä: päivä, nimi, matka, tahti, nousumetrit ja
 huomautus (`✓` = ei hyppäystä, `▲`/`⚠` = matkahyppäys prosentteineen, tai "tauon jälkeen").
+Kerralla näytetään **200 riviä**; loput painikkeella.
 
 > **▸ Miksi uusin ylimpänä:** viimeisimmät treenit ovat ne, joiden perusteella seuraava
 > päätös tehdään. Taulukko ei myöskään vaadi vieritystä loppuun ollakseen hyödyllinen.
+>
+> **▸ Miksi taulukko sivutetaan:** 3436 treeniä kerralla on noin 27 500 DOM-solmua eli yli
+> 90 % koko sivun solmuista — mitattuna selvästi raskain yksittäinen asia mitä sivu tekee,
+> ja puhelimessa se on se kohta joka voi kaataa välilehden. Kukaan ei selaa kolmea ja puolta
+> tuhatta riviä kerralla, joten oletuksena ladataan 200 ja loput pyydettäessä. Sivutuksen
+> jälkeen sama historia on 3 191 solmua.
 
 ---
 
@@ -661,7 +668,7 @@ Testit vaativat **Node.js 22+**. Riippuvuuksia ei tarvitse asentaa — kaikki k�
 sisäänrakennettua `node:test`-kirjastoa.
 
 ```bash
-npm test              # koko testisarja, 293 testiä
+npm test              # koko testisarja, 297 testiä
 npm run test:watch    # ajaa uudelleen kun tiedostot muuttuvat
 npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 ```
@@ -673,7 +680,7 @@ npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 | `test/*.test.mjs` (13 kpl) | Analyysimoduulit yksitellen | 58 |
 | `test/edges.test.mjs` | Raja-arvot — jokainen kynnys molemmilta puolilta | 38 |
 | `tools/core.test.js` | Jaettu vientiydin: uudelleenyritys, jatkaminen, reidittömien muisti | 38 |
-| `test/render.test.mjs` | `app/render/*` — kortit, ennätykset, kaudet, taulukko, kaaviot | 37 |
+| `test/render.test.mjs` | `app/render/*` — kortit, ennätykset, kaudet, taulukko, kaaviot | 41 |
 | `tools/export-cli.test.mjs` | Node-CLI: argumentit, levylle kirjoitus, jatkaminen | 24 |
 | `test/compact.test.mjs` | Kevyt muoto: riittävyys GPX:ään verrattuna, tallennus, kelvoton data | 21 |
 | `test/periods.test.mjs` | Vuosi- ja kuukausiyhteenvedot, ennätykset, viikkoputket | 19 |
@@ -681,7 +688,7 @@ npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 | `test/hostile.test.mjs` | Vihamielinen ja vioittunut GPX: XSS, XXE, ReDoS, NaN, kaatumiset | 15 |
 | `test/assets.test.mjs` | Sivujen eheys, moduuliverkko, kirjanmerkin liitettävyys | 14 |
 | `test/pipeline.test.mjs` | Koko putki GPX-tekstistä valmiiseen malliin | 13 |
-| | **Yhteensä** | **293** |
+| | **Yhteensä** | **297** |
 
 Kattavuus lähdekoodista: **rivit 97 %, haaraumat 93 %, funktiot 91 %**. Kattamatta jää
 lähinnä `app/main.mjs`:n selainliima — tiedoston lataus levylle ja välilehtien vaihto —

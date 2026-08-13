@@ -408,6 +408,59 @@ test("renderTable emits one row per workout, newest first", () => {
   assert.ok(positions[positions.length - 1] < positions[0], "newest row should come first");
 });
 
+/** A long history, cheap to build: no GPX parsing, just the fields the table reads. */
+function manyWorkouts(n) {
+  const now = Date.now();
+  const workouts = Array.from({ length: n }, (_, i) => ({
+    id: `w${i}`, name: `Lenkki ${i + 1}`, date: now - (n - i) * 86400000,
+    distanceKm: 10, durationMin: 60, paceMinKm: 6, elevGain: 50, avgHr: null, points: [],
+  }));
+  return { workouts, spikes: workouts.map(() => ({ band: "none", suppressed: false, ratio: 1 })) };
+}
+
+test("a long history renders one page of rows, not all of them", () => {
+  // 3436 treeniä kerralla on noin 27 500 DOM-solmua — yli 90 % koko sivusta ja
+  // puhelimessa selvästi raskain yksittäinen asia mitä sivu tekee.
+  const target = el();
+  renderTable(target, manyWorkouts(1000));
+  const rows = (target.html().match(/<tr><td class="num">/g) || []).length;
+  assert.equal(rows, 200);
+  assert.match(target.text(), /Näytä lisää — 800 jäljellä/);
+});
+
+test("the first page is the newest workouts, not the oldest", () => {
+  const target = el();
+  const model = manyWorkouts(1000);
+  renderTable(target, model);
+  const html = target.html();
+  assert.ok(html.includes("<td>Lenkki 1000</td>"), "the newest workout must be on the first page");
+  assert.ok(!html.includes("<td>Lenkki 1</td>"), "the oldest must wait for a later page");
+});
+
+test("the button appends the next page and disappears at the end", () => {
+  const target = el();
+  renderTable(target, manyWorkouts(450));
+  const button = target.children[0].children.find((c) => c.className.includes("more"));
+  assert.ok(button, "expected a load-more button");
+
+  button.dispatch("click");
+  assert.equal((target.html().match(/<tr><td class="num">/g) || []).length, 400);
+  assert.match(button.textContent, /50 jäljellä/);
+
+  button.dispatch("click");
+  assert.equal((target.html().match(/<tr><td class="num">/g) || []).length, 450);
+  assert.ok(button.hidden, "nothing left to load, so the button must go");
+  assert.ok(target.html().includes("<td>Lenkki 1</td>"), "the oldest workout is reachable");
+});
+
+test("a history shorter than one page shows no load-more button", () => {
+  const target = el();
+  renderTable(target, manyWorkouts(12));
+  const button = target.children[0].children.find((c) => c.className.includes("more"));
+  assert.ok(button.hidden);
+  assert.equal((target.html().match(/<tr><td class="num">/g) || []).length, 12);
+});
+
 test("renderTable annotates a spike row and marks clean rows", () => {
   const target = el();
   renderTable(target, spikyModel());

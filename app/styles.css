@@ -54,6 +54,9 @@ table.periods td.pbar span { display: block; height: 7px; border-radius: 4px; ba
 table.periods td .u { color: var(--muted); font-size: 10px; }
 table.periods td { white-space: nowrap; }
 .tscroll { overflow-x: auto; }
+.minibtn.more { margin-top: 10px; width: 100%; }
+/* Luvut eivät saa katketa kahdelle riville: "12.0 km" luetaan yhtenä asiana. */
+table td.num, table th { white-space: nowrap; }
 @media (max-width: 720px) { .gauges { grid-template-columns: repeat(3,1fr);} .cards3, .two { grid-template-columns: 1fr; } }
 .goals { display: flex; gap: 6px; flex-wrap: wrap; }
 .goals button { background: #0d141c; color: var(--muted); border: 1px solid var(--line); border-radius: 20px; padding: 5px 12px; font: inherit; font-size: 12px; cursor: pointer; }
