@@ -1,5 +1,5 @@
 import { parseGpx } from "../src/parse/gpx.mjs";
-import { parseCompact, workoutsToCompactFile } from "../src/parse/compact.mjs";
+import { parseCompact, workoutsToCompactFile, sportFromFilename } from "../src/parse/compact.mjs";
 import { summarizeWorkout } from "../src/analysis/workout.mjs";
 import { aggregate } from "../src/analysis/aggregate.mjs";
 import { splitBlocks, slopePerDay, comeback, activeFrequencyPerWeek } from "../src/analysis/breaks.mjs";
@@ -11,6 +11,7 @@ import { vdotTrend } from "../src/analysis/vo2max.mjs";
 import { hrSummary } from "../src/analysis/hrZones.mjs";
 import { byYear, byMonth } from "../src/analysis/periods.mjs";
 import { records } from "../src/analysis/records.mjs";
+import { bySport, sportOptions, filterBySport } from "../src/analysis/sports.mjs";
 import { coachingTips } from "../src/analysis/coaching.mjs";
 import { renderVerdict } from "./render/verdict.mjs";
 import { renderOverview } from "./render/overview.mjs";
@@ -22,6 +23,7 @@ import { renderPeriods } from "./render/periods.mjs";
 let workouts = [];
 let goal = "endurance";
 let tab = "overview";
+let sport = null; // null = kaikki lajit
 let currentModel = null;
 
 function buildModel(ws) {
@@ -82,7 +84,8 @@ async function addFiles(fileList) {
 
       const parsed = parseGpx(text);
       if (!parsed) { rejected.push(file.name); continue; } // non-GPX / track-less
-      if (!take({ id: file.name, ...parsed, ...summarizeWorkout(parsed.points) })) {
+      const sport = sportFromFilename(file.name);
+      if (!take({ id: file.name, ...(sport ? { sport } : {}), ...parsed, ...summarizeWorkout(parsed.points) })) {
         rejected.push(file.name);
       }
     } catch (e) {
@@ -91,7 +94,9 @@ async function addFiles(fileList) {
     }
   }
   workouts.sort((a, b) => a.date - b.date);
-  render(buildModel(workouts));
+  // Uusi tiedosto voi tuoda lajin jota ei ennen ollut, joten suodatin voi
+  // osoittaa lajiin joka ei enää ole valittavissa vain jos se katosi — ei voi.
+  update();
   reportRejected(rejected);
   saveButton.hidden = workouts.length === 0;
 }
@@ -130,6 +135,40 @@ function reportRejected(rejected) {
     : "";
 }
 
+/**
+ * Kokoa ja piirrä näkymä valitulla lajirajauksella.
+ *
+ * Lajivalinta rajaa koko sivun, ei yhtä paneelia: tahti, VO₂max ja 80/20 ovat
+ * juoksun mittoja, eivätkä ne tarkoita samaa jos pyöräily lasketaan mukaan.
+ */
+function update() {
+  const shown = filterBySport(workouts, sport);
+  const model = buildModel(shown);
+  model.sports = bySport(workouts); // erittely aina koko historiasta
+  model.sport = sport;
+  renderSportPicker();
+  render(model);
+}
+
+function renderSportPicker() {
+  const el = document.getElementById("sports");
+  if (!el) return;
+  const options = sportOptions(workouts);
+  el.hidden = options.length === 0;
+  if (el.hidden) { el.innerHTML = ""; return; }
+
+  el.innerHTML = `<span class="sl">Laji</span>`;
+  const button = (value, label, count) => {
+    const b = document.createElement("button");
+    b.innerHTML = `${label}${count != null ? ` <span class="c">${count}</span>` : ""}`;
+    if (value === sport) b.className = "on";
+    b.addEventListener("click", () => { sport = value; update(); });
+    el.appendChild(b);
+  };
+  button(null, "Kaikki", workouts.length);
+  for (const o of options) button(o.sport, o.label, o.count);
+}
+
 function render(model) {
   currentModel = model;
   model.coaching = coachingTips(model, goal);
@@ -147,6 +186,7 @@ function setGoal(g) {
   currentModel.coaching = coachingTips(currentModel, goal);
   renderOverview(document.getElementById("tab-overview"), currentModel, goal, setGoal);
 }
+
 
 function setTab(id) {
   tab = id;

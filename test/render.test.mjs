@@ -233,6 +233,43 @@ test("renderPeriods builds a year table and a month table", () => {
   assert.match(html, /width:100%/, "the peak period should fill its bar");
 });
 
+test("the sport table appears only when there is more than one sport", () => {
+  const now = Date.now();
+  const model = buildModel(runsToWorkouts([
+    gpxRun({ name: "Lenkki", start: daysAgo(10, now), km: 10, minutes: 60 }),
+    gpxRun({ name: "Toinen", start: daysAgo(5, now), km: 10, minutes: 60 }),
+  ]));
+
+  const one = el();
+  renderPeriods(one, { ...model, sports: [{ sport: "running", label: "Juoksu", count: 2, km: 20, minutes: 120, elev: 0, avgPace: 6, share: 100 }] });
+  assert.doesNotMatch(one.html(), /Lajit/, "a single sport is not a breakdown");
+
+  const two = el();
+  renderPeriods(two, { ...model, sports: [
+    { sport: "running", label: "Juoksu", count: 2, km: 20, minutes: 120, elev: 140, avgPace: 6, share: 80 },
+    { sport: "act14", label: "Laji 14", count: 1, km: 5, minutes: 15, elev: 0, avgPace: 3, share: 20 },
+  ] });
+  const html = two.html();
+  assert.match(html, /Lajit <span class="tech">koko historia/);
+  assert.match(html, /Juoksu/);
+  assert.match(html, /Laji 14/);
+  assert.match(html, /80<span class="u"> %<\/span>/, "the share belongs in the table");
+  assert.match(html, /width:100%/, "the biggest sport fills its bar");
+});
+
+test("renderPeriods survives a model with no sport breakdown at all", () => {
+  // Vanha kevyt tiedosto ei kanna lajia, joten kenttä voi puuttua kokonaan.
+  const now = Date.now();
+  const model = buildModel(runsToWorkouts([
+    gpxRun({ start: daysAgo(10, now), km: 10, minutes: 60 }),
+    gpxRun({ start: daysAgo(5, now), km: 10, minutes: 60 }),
+  ]));
+  delete model.sports;
+  const target = el();
+  assert.doesNotThrow(() => renderPeriods(target, model));
+  assert.match(target.html(), /Vuodet/);
+});
+
 test("renderPeriods hints instead of drawing an empty table", () => {
   const target = el();
   renderPeriods(target, buildModel([]));
@@ -492,6 +529,70 @@ test("renderProgress builds the three chart panels", () => {
   assert.match(html, /Tahti/);
   assert.match(html, /Kestävyyskunto/);
   assert.match(html, /km\/kk/);
+});
+
+test("pointing at a chart reports the value under the cursor", () => {
+  // Asteikko kertoo vaihteluvälin, mutta ei sitä mikä lenkki oli mikä. Lukema
+  // on se osa joka tekee kaaviosta luettavan eikä vain katseltavan.
+  const target = el();
+  const model = spikyModel();
+  renderProgress(target, model);
+
+  const panel = target.children[0];
+  const canvas = panel.children.find((c) => c.tagName === "CANVAS");
+  const readout = panel.children.find((c) => c.className === "readout");
+  assert.ok(canvas && readout, "expected a canvas and a readout");
+  assert.equal(readout.textContent, "", "nothing is reported before pointing");
+
+  // Oikea reuna = viimeisin treeni: 15 km, 95 min.
+  canvas.dispatch("mousemove", { clientX: 1000 });
+  assert.match(readout.textContent, /15\.0 km/);
+  assert.match(readout.textContent, /6:20/, "pace comes along with the distance");
+
+  canvas.dispatch("mouseleave");
+  assert.equal(readout.textContent, "", "moving away clears the readout");
+});
+
+test("a touch reports the same reading as a mouse", () => {
+  // Historiaa selataan puhelimella yhtä usein kuin koneella.
+  const target = el();
+  renderProgress(target, spikyModel());
+  const panel = target.children[0];
+  const canvas = panel.children.find((c) => c.tagName === "CANVAS");
+  const readout = panel.children.find((c) => c.className === "readout");
+
+  canvas.dispatch("touchstart", { touches: [{ clientX: 1000 }] });
+  const started = readout.textContent;
+  assert.match(started, /15\.0 km/);
+
+  canvas.dispatch("touchmove", { touches: [{ clientX: 0 }] });
+  assert.notEqual(readout.textContent, started, "dragging must move the reading");
+
+  // Kosketus ilman kosketuspistettä ei saa kaataa mitään.
+  assert.doesNotThrow(() => canvas.dispatch("touchmove", { touches: [] }));
+});
+
+test("the pace and VO2max charts report their own units", () => {
+  const target = el();
+  renderProgress(target, spikyModel());
+  const paceCanvas = target.children[1].children.find((c) => c.tagName === "CANVAS");
+  const paceReadout = target.children[1].children.find((c) => c.className === "readout");
+  paceCanvas.dispatch("mousemove", { clientX: 1000 });
+  assert.match(paceReadout.textContent, /min\/km/);
+
+  const vdotReadout = target.children[2].children.find((c) => c.className === "readout");
+  const vdotCanvas = target.children[2].children.find((c) => c.tagName === "CANVAS");
+  vdotCanvas.dispatch("mousemove", { clientX: 1000 });
+  assert.match(vdotReadout.textContent, /VO₂max/);
+});
+
+test("an empty series leaves the readout alone rather than reading undefined", () => {
+  const target = el();
+  const model = buildModel([]);
+  renderProgress(target, model);
+  const panel = target.children[0];
+  const canvas = panel.children.find((c) => c.tagName === "CANVAS");
+  if (canvas) assert.doesNotThrow(() => canvas.dispatch("mousemove", { clientX: 10 }));
 });
 
 test("renderProgress hints instead of drawing when VO2max has too few points", () => {

@@ -58,6 +58,14 @@ table.periods td { white-space: nowrap; }
 /* Luvut eivät saa katketa kahdelle riville: "12.0 km" luetaan yhtenä asiana. */
 table td.num, table th { white-space: nowrap; }
 @media (max-width: 720px) { .gauges { grid-template-columns: repeat(3,1fr);} .cards3, .two { grid-template-columns: 1fr; } }
+/* Lajivalikko: sama muoto kuin tavoitepainikkeilla, mutta koko sivun yläpuolella
+   koska valinta vaikuttaa jokaiseen välilehteen. */
+.sports { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.sports[hidden] { display: none; }
+.sports .sl { font-size: 10px; letter-spacing: .11em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.sports button { background: #0d141c; color: var(--muted); border: 1px solid var(--line); border-radius: 20px; padding: 5px 12px; font: inherit; font-size: 12px; cursor: pointer; }
+.sports button.on { color: var(--bg); background: var(--accent); border-color: var(--accent); font-weight: 700; }
+.sports button .c { opacity: .7; font-size: 10px; margin-left: 4px; }
 .goals { display: flex; gap: 6px; flex-wrap: wrap; }
 .goals button { background: #0d141c; color: var(--muted); border: 1px solid var(--line); border-radius: 20px; padding: 5px 12px; font: inherit; font-size: 12px; cursor: pointer; }
 .goals button.on { color: var(--bg); background: var(--accent); border-color: var(--accent); font-weight: 700; }

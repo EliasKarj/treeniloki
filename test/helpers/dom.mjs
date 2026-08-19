@@ -122,7 +122,7 @@ export class FakeElement {
  */
 export function installAppDom() {
   const ids = [
-    "app", "hd-meta", "drop", "drop-note", "save-compact", "file", "verdict", "tabs",
+    "app", "hd-meta", "drop", "drop-note", "save-compact", "file", "verdict", "sports", "tabs",
     "tab-overview", "tab-progress", "tab-health", "tab-periods", "tab-workouts",
   ];
   // The id must be set on the element itself: setTab() picks the visible panel

@@ -37,7 +37,7 @@ export function hrHistogram(points) {
 }
 
 /** Summarisoitu treeni → kompakti tietue. `key` on Sports Trackerin workoutKey, jos tiedossa. */
-export function toCompactRecord(workout, key) {
+export function toCompactRecord(workout, key, sport) {
   const rec = {
     d: workout.date,
     n: workout.name,
@@ -46,6 +46,10 @@ export function toCompactRecord(workout, key) {
     el: round(workout.elevGain, 1),
   };
   if (key) rec.k = key;
+  // Laji on jo tiedossa vientinimestä, ja ilman sitä lajierittely katoaisi
+  // heti kun historia luetaan takaisin kevyestä tiedostosta.
+  const s = sport || workout.sport;
+  if (s) rec.s = s;
   // Valmis histogrammi ensin: kompaktista luetulla treenillä `points` on tyhjä
   // taulukko, joka on totuusarvoltaan tosi — siitä laskettu histogrammi olisi
   // tyhjä ja syke katoaisi uudelleentallennuksessa.
@@ -67,6 +71,17 @@ export function keyFromFilename(name) {
 }
 
 /**
+ * Laji vientinimestä, esim. "2024-01-01_running_abc123.gpx" → "running".
+ *
+ * Sama nimi kantaa sekä tunnisteen että lajin, joten GPX:stä ladattu treeni
+ * tietää lajinsa ilman että tiedoston sisältöä tarvitsee tulkita.
+ */
+export function sportFromFilename(name) {
+  const m = /^\d{4}-\d{2}-\d{2}_([^_]+)_.+\.gpx$/.exec(String(name || ""));
+  return m ? m[1] : null;
+}
+
+/**
  * Ladatut treenit → kevyt tiedosto.
  *
  * Toimii riippumatta siitä onko treeni luettu GPX:stä (reittipisteet) vai
@@ -77,7 +92,7 @@ export function workoutsToCompactFile(workouts) {
   const records = workouts
     .slice()
     .sort((a, b) => a.date - b.date)
-    .map((w) => toCompactRecord(w, w.key || keyFromFilename(w.id)));
+    .map((w) => toCompactRecord(w, w.key || keyFromFilename(w.id), w.sport || sportFromFilename(w.id)));
   return buildCompactFile(records);
 }
 
@@ -133,6 +148,8 @@ export function parseCompact(input) {
       // sykealueet lukevat histogrammia.
       points: [],
     };
+    // Vanhemmissa tiedostoissa lajia ei ole; null on rehellinen "ei tiedossa".
+    if (typeof rec.s === "string" && rec.s) workout.sport = rec.s;
     if (hist) {
       workout.hrHistogram = hist;
       const stats = histogramStats(hist);

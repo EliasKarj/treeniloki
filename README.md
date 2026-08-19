@@ -519,9 +519,36 @@ Palkki näyttää ajan jakautumisen alueittain sekä helppo/keski/kova-prosentit
 > jokaisen peräkkäisen pisteparin todellinen kesto ja kirjaamalla se alkupisteen alueelle,
 > tulos on oikea myös silloin kun tallennustiheys vaihtelee kesken lenkin.
 
+### Lajivalinta — painikerivi tilannearvion alla
+
+Jos historiassa on useampi laji, sivun yläreunaan ilmestyy rivi
+**Kaikki · Juoksu · …**. Valinta rajaa **koko sivun**: jokainen luku, kaavio ja
+taulukko lasketaan vain valitun lajin treeneistä. Yhdellä lajilla riviä ei näytetä.
+
+Laji tulee vientitiedoston nimestä (`2024-01-01_running_abc.gpx`) ja tallentuu myös
+kevyeen muotoon, joten erittely säilyy kun historia luetaan takaisin.
+
+> **▸ Miksi rajaus koskee koko sivua eikä yhtä paneelia:** tahti, VO₂max ja
+> 80/20-jakauma ovat juoksun mittoja. Pyöräilyn 30 km/h ei ole "nopea tahti" samassa
+> mielessä, eikä sen syke tarkoita samaa kuormaa. Jos lajit lasketaan yhteen, luvut
+> näyttävät oikeilta mutta eivät mittaa mitään — ja se on huonompi tilanne kuin
+> puuttuva luku, koska virhettä ei huomaa.
+>
+> **▸ Miksi tuntemattomat lajit näkyvät numerona:** Sports Tracker antaa treenille
+> `activityId`-numeron, ja vain juoksu (1) on varmistettu. Muut näkyvät muodossa
+> **Laji 14**. Nimen arvaaminen väärin olisi pahempaa kuin numeron näyttäminen:
+> väärä nimi näyttää tiedolta. Voit nimetä omasi `src/analysis/sports.mjs`-tiedoston
+> `LABELS`-taulukossa — pelkkä sivun lataus riittää, vientiä ei tarvitse ajaa uusiksi.
+>
+> **▸ Miksi valikko piilotetaan yhdellä lajilla:** valinta, jossa on yksi vaihtoehto,
+> ei ole valinta. Se veisi tilaa ja saisi lukijan etsimään merkitystä jota ei ole.
+
 ### Välilehti: Kaudet
 
-Kaksi taulukkoa: **vuodet** ja **kuukaudet**, uusin ensin. Molemmissa samat sarakkeet —
+Kolme taulukkoa. **Lajit** ensin — matka, lenkit, aika, nousu, tahti ja osuus
+kokonaismatkasta — ja se lasketaan aina **koko historiasta**, myös silloin kun sivu on
+rajattu yhteen lajiin: rajaus kertoo mitä katsot, lajitaulukko kertoo mitä on olemassa.
+Sen alla **vuodet** ja **kuukaudet**, uusin ensin. Molemmissa samat sarakkeet —
 matka, lenkkien määrä, kokonaisaika, nousumetrit ja keskitahti — sekä suhteellinen palkki,
 jonka pituus kertoo kauden matkan verrattuna historian kovimpaan kauteen.
 
@@ -678,7 +705,7 @@ Testit vaativat **Node.js 22+**. Riippuvuuksia ei tarvitse asentaa — kaikki k�
 sisäänrakennettua `node:test`-kirjastoa.
 
 ```bash
-npm test              # koko testisarja, 306 testiä
+npm test              # koko testisarja, 330 testiä
 npm run test:watch    # ajaa uudelleen kun tiedostot muuttuvat
 npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 ```
@@ -690,18 +717,20 @@ npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 | `test/*.test.mjs` (13 kpl) | Analyysimoduulit yksitellen | 58 |
 | `test/edges.test.mjs` | Raja-arvot — jokainen kynnys molemmilta puolilta | 38 |
 | `tools/core.test.js` | Jaettu vientiydin: uudelleenyritys, jatkaminen, reidittömien muisti | 38 |
-| `test/render.test.mjs` | `app/render/*` — kortit, ennätykset, kaudet, taulukko, kaaviot | 41 |
+| `test/render.test.mjs` | `app/render/*` — kortit, ennätykset, kaudet, lajit, kaavioiden lukema | 47 |
 | `tools/export-cli.test.mjs` | Node-CLI: argumentit, levylle kirjoitus, jatkaminen | 24 |
 | `test/compact.test.mjs` | Kevyt muoto: riittävyys GPX:ään verrattuna, tallennus, kelvoton data | 21 |
 | `test/periods.test.mjs` | Vuosi- ja kuukausiyhteenvedot, ennätykset, viikkoputket | 19 |
 | `test/interaction.test.mjs` | Pudotus, välilehdet, tavoite, kevyen tallennus, vioittuneet | 17 |
 | `test/zip.test.mjs` | Oma zip-kirjoitin: keskushakemisto, CRC, UTF-8, zip32:n rajat | 8 |
+| `test/sports.test.mjs` | Lajien erittely, nimeäminen, säilyminen kevyessä muodossa | 12 |
+| `test/sportfilter.test.mjs` | Lajivalikko: ilmestyminen, rajaus, paluu kaikkiin | 6 |
 | `test/hostile.test.mjs` | Vihamielinen ja vioittunut GPX: XSS, XXE, ReDoS, NaN, kaatumiset | 15 |
 | `test/assets.test.mjs` | Sivujen eheys, moduuliverkko, kirjanmerkin liitettävyys | 14 |
 | `test/pipeline.test.mjs` | Koko putki GPX-tekstistä valmiiseen malliin | 13 |
-| | **Yhteensä** | **306** |
+| | **Yhteensä** | **330** |
 
-Kattavuus lähdekoodista: **rivit 97 %, haaraumat 93 %, funktiot 91 %**. Kattamatta jää
+Kattavuus lähdekoodista: **rivit 96 %, haaraumat 90 %, funktiot 91 %**. Kattamatta jää
 lähinnä `app/main.mjs`:n selainliima — tiedoston lataus levylle ja välilehtien vaihto —
 sekä `export-cli.mjs`:n prosessitason kuori, jotka molemmat vaativat oikean ympäristön.
 
@@ -760,6 +789,7 @@ src/
     goals.mjs             tavoitteet ja vinkkien painotus
     periods.mjs           vuosi- ja kuukausiyhteenvedot
     records.mjs           ennätykset ja viikkoputket
+    sports.mjs            lajien erittely, nimet ja rajaus
 test/
   *.test.mjs            Analyysimoduulien, renderin ja putken testit
   helpers/              DOM-stub ja GPX-fixturet (ei riippuvuuksia)

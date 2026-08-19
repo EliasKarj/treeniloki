@@ -43,6 +43,36 @@ function periodTable(title, periods, note) {
   </div>`;
 }
 
+/**
+ * Lajierittely koko historiasta — myös silloin kun sivu on rajattu yhteen lajiin.
+ * Rajaus kertoo mitä katsot; tämä taulukko kertoo mitä on olemassa.
+ */
+function sportTable(sports) {
+  if (!sports || sports.length < 2) return "";
+  const peak = sports[0].km || 1;
+  const rows = sports.map((g) => `
+    <tr>
+      <td class="pl">${g.label}</td>
+      <td class="pbar"><span style="width:${Math.max(2, (g.km / peak) * 100)}%"></span></td>
+      <td class="num">${km(g.km)}<span class="u"> km</span></td>
+      <td class="num">${g.count}</td>
+      <td class="num">${fmtDuration(g.minutes)}</td>
+      <td class="num">${km(g.elev)}<span class="u"> m</span></td>
+      <td class="num">${fmtPace(g.avgPace)}</td>
+      <td class="num">${g.share.toFixed(0)}<span class="u"> %</span></td>
+    </tr>`).join("");
+
+  return `<div class="panel">
+    <div class="lbl" style="margin-bottom:8px">Lajit <span class="tech">koko historia</span></div>
+    <div class="tscroll"><table class="periods">
+      <thead><tr>
+        <th>Laji</th><th class="pbar"></th><th>Matka</th><th>Lenkkejä</th><th>Aika</th><th>Nousu</th><th>Tahti</th><th>Osuus</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  </div>`;
+}
+
 export function renderPeriods(el, model) {
   const years = model.periods?.years || [];
   const months = model.periods?.months || [];
@@ -53,6 +83,7 @@ export function renderPeriods(el, model) {
   }
 
   el.innerHTML =
+    sportTable(model.sports) +
     periodTable("Vuodet", years) +
     periodTable("Kuukaudet", months, "uusin ensin");
 }
