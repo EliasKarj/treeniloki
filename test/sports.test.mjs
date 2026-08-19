@@ -8,7 +8,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { bySport, sportOptions, filterBySport, sportLabel, isRunning } from "../src/analysis/sports.mjs";
+import { bySport, sportOptions, filterBySport, sportLabel, isRunning, activityId, ACTIVITY_FI } from "../src/analysis/sports.mjs";
 import { sportFromFilename, keyFromFilename, workoutsToCompactFile, parseCompact } from "../src/parse/compact.mjs";
 
 const w = (sport, km, minutes, elev = 0, date = Date.UTC(2025, 0, 1)) =>
@@ -28,24 +28,53 @@ test("sportFromFilename returns null for names it does not recognise", () => {
   }
 });
 
-test("known sports get a Finnish name and unknown ids keep their number", () => {
+test("activity ids resolve to Finnish names", () => {
   assert.equal(sportLabel("running"), "Juoksu");
-  // Guessing a name for an unverified id would be worse than showing the number.
-  assert.equal(sportLabel("act14"), "Laji 14");
-  assert.equal(sportLabel("swimming"), "Swimming");
+  assert.equal(sportLabel("act0"), "Kävely");
+  assert.equal(sportLabel("act2"), "Pyöräily");
+  assert.equal(sportLabel("act23"), "Salitreeni");
+  assert.equal(sportLabel("act21"), "Uinti (allas)");
   assert.equal(sportLabel(null), "Tuntematon");
   assert.ok(isRunning("running"));
-  assert.ok(!isRunning("act14"));
+  assert.ok(!isRunning("act23"));
   assert.ok(!isRunning(null));
+});
+
+test("an id outside the list keeps its number instead of getting a guess", () => {
+  // Nimilista on yhteisön purkama, ei virallinen. Tuntematon numero on
+  // rehellisempi kuin keksitty nimi, joka näyttäisi tiedolta.
+  assert.equal(sportLabel("act4"), "Laji 4");
+  assert.equal(sportLabel("act998"), "Laji 998");
+  assert.equal(sportLabel("swimming"), "Swimming");
+});
+
+test("the id survives into the breakdown so a wrong name can be spotted", () => {
+  const [gym] = bySport([w("act23", 0, 45)]);
+  assert.equal(gym.label, "Salitreeni");
+  assert.equal(gym.id, 23);
+  assert.equal(activityId("running"), 1, "running is id 1, which this project verified itself");
+  assert.equal(activityId("lenkki"), null);
+  assert.equal(activityId(null), null);
+});
+
+test("the name list is aligned to the ids that two sources agree on", () => {
+  // Lista on purettu yhteisön toteutuksesta. Kaksi riippumatonta lähdettä
+  // antavat saman järjestyksen näille, ja 1 = juoksu täsmää siihen mikä tässä
+  // projektissa oli jo varmistettu — nämä ovat listan ankkurit.
+  assert.equal(ACTIVITY_FI[0], "Kävely");
+  assert.equal(ACTIVITY_FI[1], "Juoksu");
+  assert.equal(ACTIVITY_FI[2], "Pyöräily");
+  assert.equal(ACTIVITY_FI[11], "Vaellus");
+  assert.equal(ACTIVITY_FI[13], "Laskettelu");
 });
 
 test("bySport totals each sport and orders by distance", () => {
   const groups = bySport([
     w("running", 10, 60, 100),
     w("running", 5, 30, 50),
-    w("act14", 40, 90, 200),
+    w("act2", 40, 90, 200),
   ]);
-  assert.deepEqual(groups.map((g) => g.sport), ["act14", "running"], "biggest first");
+  assert.deepEqual(groups.map((g) => g.sport), ["act2", "running"], "biggest first");
 
   const [cycling, running] = groups;
   assert.equal(cycling.count, 1);
@@ -85,16 +114,16 @@ test("the picker stays hidden until there is something to choose between", () =>
   assert.deepEqual(sportOptions([]), []);
   assert.deepEqual(sportOptions([w("running", 10, 60), w("running", 8, 48)]), [],
     "one sport is not a choice");
-  const options = sportOptions([w("running", 10, 60), w("act14", 30, 60)]);
-  assert.deepEqual(options.map((o) => o.label), ["Laji 14", "Juoksu"]);
+  const options = sportOptions([w("running", 10, 60), w("act2", 30, 60)]);
+  assert.deepEqual(options.map((o) => o.label), ["Pyöräily", "Juoksu"]);
   assert.deepEqual(options.map((o) => o.count), [1, 1]);
 });
 
 test("filtering keeps only the chosen sport, and null keeps everything", () => {
-  const all = [w("running", 10, 60), w("act14", 30, 60), w(null, 5, 30)];
+  const all = [w("running", 10, 60), w("act2", 30, 60), w(null, 5, 30)];
   assert.equal(filterBySport(all, null).length, 3);
   assert.equal(filterBySport(all, "running").length, 1);
-  assert.equal(filterBySport(all, "act14")[0].distanceKm, 30);
+  assert.equal(filterBySport(all, "act2")[0].distanceKm, 30);
   assert.equal(filterBySport(all, "nosuchsport").length, 0);
 });
 
@@ -104,15 +133,15 @@ test("the sport survives a compact save and load", () => {
   const workouts = [
     { id: "2024-01-01_running_a.gpx", date: Date.UTC(2024, 0, 1), name: "Aamulenkki",
       distanceKm: 10, durationMin: 60, elevGain: 50, paceMinKm: 6, points: [] },
-    { id: "2024-01-02_act14_b.gpx", date: Date.UTC(2024, 0, 2), name: "Pyöräily",
-      distanceKm: 40, durationMin: 90, elevGain: 120, paceMinKm: 2.25, points: [] },
+    { id: "2024-01-02_act23_b.gpx", date: Date.UTC(2024, 0, 2), name: "Salitreeni",
+      distanceKm: 0, durationMin: 45, elevGain: 0, paceMinKm: 0, points: [] },
   ];
   const file = workoutsToCompactFile(workouts);
-  assert.deepEqual(file.workouts.map((r) => r.s), ["running", "act14"]);
+  assert.deepEqual(file.workouts.map((r) => r.s), ["running", "act23"]);
 
   const back = parseCompact(file);
-  assert.deepEqual(back.map((x) => x.sport), ["running", "act14"]);
-  assert.deepEqual(bySport(back).map((g) => g.label), ["Laji 14", "Juoksu"]);
+  assert.deepEqual(back.map((x) => x.sport), ["running", "act23"]);
+  assert.deepEqual(bySport(back).map((g) => g.label), ["Juoksu", "Salitreeni"]);
 });
 
 test("a compact file written before sports existed still loads", () => {

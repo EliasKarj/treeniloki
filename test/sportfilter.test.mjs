@@ -40,7 +40,7 @@ function mixedHistory(now = Date.now()) {
   }
   for (let i = 0; i < 2; i++) {
     files.push({
-      name: `2025-02-0${i + 1}_act14_c${i}.gpx`,
+      name: `2025-02-0${i + 1}_act2_c${i}.gpx`,
       text: async () => gpxRun({ name: `Pyöräily ${i + 1}`, start: daysAgo(12 - i * 3, now), km: 40, minutes: 90, hr: 120 }),
     });
   }
@@ -73,7 +73,7 @@ test("a second sport reveals the picker with a count per sport", async () => {
   assert.equal(labels.length, 3);
   assert.match(labels[0], /Kaikki/);
   assert.match(labels[0], />9</, "the all-button counts the whole history");
-  assert.match(labels[1], /Laji 14/);
+  assert.match(labels[1], /Pyöräily/);
   assert.match(labels[2], /Juoksu/);
   assert.match(labels[2], />7</, "seven running workouts");
 });
@@ -97,7 +97,7 @@ test("the chosen sport is marked, and the breakdown still shows everything", () 
   // Rajaus kertoo mitä katsot; lajitaulukko kertoo mitä on olemassa.
   const periods = dom.byId["tab-periods"].html();
   assert.match(periods, /Lajit <span class="tech">koko historia/);
-  assert.match(periods, /Laji 14/, "cycling must stay visible in the breakdown");
+  assert.match(periods, /Pyöräily/, "cycling must stay visible in the breakdown");
   assert.match(periods, /Juoksu/);
 });
 

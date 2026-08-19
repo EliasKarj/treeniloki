@@ -246,13 +246,16 @@ test("the sport table appears only when there is more than one sport", () => {
 
   const two = el();
   renderPeriods(two, { ...model, sports: [
-    { sport: "running", label: "Juoksu", count: 2, km: 20, minutes: 120, elev: 140, avgPace: 6, share: 80 },
-    { sport: "act14", label: "Laji 14", count: 1, km: 5, minutes: 15, elev: 0, avgPace: 3, share: 20 },
+    { sport: "running", label: "Juoksu", id: 1, count: 2, km: 20, minutes: 120, elev: 140, avgPace: 6, share: 80 },
+    { sport: "act14", label: "Melonta", id: 14, count: 1, km: 5, minutes: 15, elev: 0, avgPace: 3, share: 20 },
   ] });
   const html = two.html();
   assert.match(html, /Lajit <span class="tech">koko historia/);
   assert.match(html, /Juoksu/);
-  assert.match(html, /Laji 14/);
+  assert.match(html, /Melonta/);
+  // Numero näkyviin: yhteisöltä purettu nimilista voi olla väärässä, ja
+  // virheen huomaa vain jos alkuperäinen tunniste on nähtävissä.
+  assert.match(html, /<span class="tech">#14<\/span>/);
   assert.match(html, /80<span class="u"> %<\/span>/, "the share belongs in the table");
   assert.match(html, /width:100%/, "the biggest sport fills its bar");
 });

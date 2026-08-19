@@ -542,11 +542,23 @@ kevyeen muotoon, joten erittely säilyy kun historia luetaan takaisin.
 > näyttävät oikeilta mutta eivät mittaa mitään — ja se on huonompi tilanne kuin
 > puuttuva luku, koska virhettä ei huomaa.
 >
-> **▸ Miksi tuntemattomat lajit näkyvät numerona:** Sports Tracker antaa treenille
-> `activityId`-numeron, ja vain juoksu (1) on varmistettu. Muut näkyvät muodossa
-> **Laji 14**. Nimen arvaaminen väärin olisi pahempaa kuin numeron näyttäminen:
-> väärä nimi näyttää tiedolta. Voit nimetä omasi `src/analysis/sports.mjs`-tiedoston
-> `LABELS`-taulukossa — pelkkä sivun lataus riittää, vientiä ei tarvitse ajaa uusiksi.
+Lajit tunnistetaan Sports Trackerin `activityId`-numerosta. Nimet ovat tiedostossa
+`src/analysis/sports.mjs` (`ACTIVITY_FI`), ja **taulukossa näkyy nimen perässä numero**
+— esimerkiksi `Salitreeni #23`. Tuntematon numero näkyy muodossa **Laji 42**.
+
+> **▸ Miksi numero näytetään nimen rinnalla:** nimilista on purettu yhteisön
+> toteutuksista, ei virallisesta dokumentaatiosta. Kaksi riippumatonta lähdettä antavat
+> saman järjestyksen (0 kävely, 1 juoksu, 2 pyöräily, 11 vaellus, 13 laskettelu), ja
+> 1 = juoksu täsmää siihen mikä tässä projektissa oli jo varmistettu — mutta lista voi
+> silti olla väärässä jossain kohtaa. Numero näkyvissä virheen huomaa ja korjaa;
+> ilman sitä väärä nimi näyttäisi tiedolta. Jos jokin nimi on väärä, korjaa se
+> `ACTIVITY_FI`-taulukkoon: pelkkä sivun lataus riittää, vientiä ei tarvitse ajaa uusiksi.
+>
+> **▸ Miksi nimiä ei laitettu tiedostonimiin:** `tools/core.js` nimeää vientitiedostot
+> muotoon `..._running_...` ja `..._act23_...`, ja **jatkoajo tunnistaa jo haetut treenit
+> juuri tiedostonimestä**. Nimien lisääminen sinne uudelleennimeäisi koko arkiston, jolloin
+> seuraava ajo lataisi kaikki 3436 treeniä uudelleen. Nimet elävät siksi vain
+> analyysipuolella.
 >
 > **▸ Miksi valikko piilotetaan yhdellä lajilla:** valinta, jossa on yksi vaihtoehto,
 > ei ole valinta. Se veisi tilaa ja saisi lukijan etsimään merkitystä jota ei ole.
@@ -730,7 +742,7 @@ Testit vaativat **Node.js 22+**. Riippuvuuksia ei tarvitse asentaa — kaikki k�
 sisäänrakennettua `node:test`-kirjastoa.
 
 ```bash
-npm test              # koko testisarja, 346 testiä
+npm test              # koko testisarja, 349 testiä
 npm run test:watch    # ajaa uudelleen kun tiedostot muuttuvat
 npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 ```
@@ -749,12 +761,12 @@ npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 | `test/interaction.test.mjs` | Pudotus, välilehdet, tavoite, kevyen tallennus, vioittuneet | 17 |
 | `test/loader.test.mjs` | Lisäysalueen kutistuminen ja raahaus kutistettuun riviin | 5 |
 | `test/zip.test.mjs` | Oma zip-kirjoitin: keskushakemisto, CRC, UTF-8, zip32:n rajat | 8 |
-| `test/sports.test.mjs` | Lajien erittely, nimeäminen, säilyminen kevyessä muodossa | 12 |
+| `test/sports.test.mjs` | Lajien erittely, nimeäminen, säilyminen kevyessä muodossa | 15 |
 | `test/sportfilter.test.mjs` | Lajivalikko: ilmestyminen, rajaus, paluu kaikkiin | 6 |
 | `test/hostile.test.mjs` | Vihamielinen ja vioittunut GPX: XSS, XXE, ReDoS, NaN, kaatumiset | 15 |
 | `test/assets.test.mjs` | Sivujen eheys, moduuliverkko, kirjanmerkin liitettävyys | 16 |
 | `test/pipeline.test.mjs` | Koko putki GPX-tekstistä valmiiseen malliin | 13 |
-| | **Yhteensä** | **346** |
+| | **Yhteensä** | **349** |
 
 Kattavuus lähdekoodista: **rivit 99 %, haaraumat 94 %, funktiot 98 %**. Kattamatta jää
 lähinnä `app/main.mjs`:n selainliima — tiedoston lataus levylle ja välilehtien vaihto —
@@ -815,7 +827,7 @@ src/
     goals.mjs             tavoitteet ja vinkkien painotus
     periods.mjs           vuosi- ja kuukausiyhteenvedot
     records.mjs           ennätykset ja viikkoputket
-    sports.mjs            lajien erittely, nimet ja rajaus
+    sports.mjs            lajien erittely, activityId-nimet ja rajaus
 test/
   *.test.mjs            Analyysimoduulien, renderin ja putken testit
   helpers/              DOM-stub ja GPX-fixturet (ei riippuvuuksia)

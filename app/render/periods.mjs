@@ -52,7 +52,7 @@ function sportTable(sports) {
   const peak = sports[0].km || 1;
   const rows = sports.map((g) => `
     <tr>
-      <td class="pl">${g.label}</td>
+      <td class="pl">${g.label}${g.id != null ? ` <span class="tech">#${g.id}</span>` : ""}</td>
       <td class="pbar"><span style="width:${Math.max(2, (g.km / peak) * 100)}%"></span></td>
       <td class="num">${km(g.km)}<span class="u"> km</span></td>
       <td class="num">${g.count}</td>
@@ -63,7 +63,7 @@ function sportTable(sports) {
     </tr>`).join("");
 
   return `<div class="panel">
-    <div class="lbl" style="margin-bottom:8px">Lajit <span class="tech">koko historia</span></div>
+    <div class="lbl" style="margin-bottom:8px">Lajit <span class="tech">koko historia · # = Sports Trackerin lajinumero</span></div>
     <div class="tscroll"><table class="periods">
       <thead><tr>
         <th>Laji</th><th class="pbar"></th><th>Matka</th><th>Lenkkejä</th><th>Aika</th><th>Nousu</th><th>Tahti</th><th>Osuus</th>
