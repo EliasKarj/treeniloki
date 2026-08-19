@@ -9,15 +9,28 @@ body {
   min-height: 100dvh;
 }
 #app { max-width: 1100px; margin: 0 auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
-.hd { display: flex; justify-content: space-between; align-items: baseline; }
+/* Rivittyy kapealla näytöllä: ilman tätä nimi ja treenimäärä menivät päällekkäin. */
+.hd { display: flex; justify-content: space-between; align-items: baseline; gap: 8px 12px; flex-wrap: wrap; }
 .brand { font-weight: 800; letter-spacing: .04em; } .brand b { color: var(--accent); }
 .lbl { font-size: 10px; letter-spacing: .11em; text-transform: uppercase; color: var(--muted); }
 .num { font-family: var(--mono); font-weight: 700; }
 .warn { color: var(--warn); } .good { color: var(--accent); }
 .drop { border: 1px dashed #35506a; border-radius: 10px; padding: 14px; text-align: center; color: var(--muted); font-size: 13px; }
 .drop.over { border-color: var(--accent); color: var(--fg); }
-.dropbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; min-height: 1px; }
-.dropbar .hint { flex: 1; }
+.hdr { display: flex; align-items: center; gap: 10px; }
+/* Lisäysalue kutistuu yhdeksi riviksi kun treenit on ladattu. */
+.loader { border: 1px solid transparent; border-radius: 10px; }
+.loader > summary { display: none; }
+.loader.has-data { border-color: var(--line); background: var(--panel); padding: 0 12px; }
+.loader.has-data > summary { display: block; cursor: pointer; padding: 9px 0; font-size: 12px; color: var(--muted); list-style: none; }
+.loader.has-data > summary::-webkit-details-marker { display: none; }
+.loader.has-data > summary::before { content: "＋ "; color: var(--accent); }
+.loader.has-data[open] > summary::before { content: "− "; }
+.loader.has-data:hover > summary { color: var(--fg); }
+.loader.has-data > .drop { margin-bottom: 10px; }
+.loader.over { border-color: var(--accent); }
+.dropnote { font-size: 12px; color: var(--warn); }
+.dropnote:empty { display: none; }
 .minibtn { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 7px;
   padding: 6px 11px; font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
 .minibtn:hover { background: #131c26; color: var(--fg); border-color: var(--accent); }

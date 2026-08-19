@@ -10,10 +10,12 @@ import { installAppDom } from "./helpers/dom.mjs";
 import { gpxRun, daysAgo } from "./helpers/fixtures.mjs";
 
 let dom;
+let bootstrap;
 
 before(async () => {
   dom = installAppDom();
-  await import("../app/main.mjs?sportfilter");
+  ({ bootstrap } = await import("../app/main.mjs"));
+  bootstrap();
 });
 
 after(() => dom.uninstall());
@@ -112,7 +114,7 @@ test("a saved file keeps the split, so the picker survives the round trip", asyn
 
   const fresh = installAppDom();
   try {
-    await import("../app/main.mjs?sportroundtrip");
+    bootstrap();
     fresh.byId.drop.dispatch("drop", {
       dataTransfer: { files: [{ name: "takaisin.json", text: async () => saved.text }] },
     });

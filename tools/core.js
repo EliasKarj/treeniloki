@@ -41,6 +41,63 @@
     return formatDate(workout.startTime) + "_" + activityName(workout.activityId) + "_" + workout.workoutKey + ".gpx";
   }
 
+  /** Ensimmäinen kenttä joka on olemassa ja äärellinen luku. */
+  function pickNumber(obj, names) {
+    for (var i = 0; i < names.length; i++) {
+      var v = Number(obj[names[i]]);
+      if (Number.isFinite(v)) return v;
+    }
+    return null;
+  }
+
+  /**
+   * Treenilistauksen rivi → treeniolio ilman reittiä.
+   *
+   * Salitreenistä, uinnista ja käsin lisätyistä suorituksista ei synny GPX:ää,
+   * joten ne katosivat viennistä kokonaan. Listaus itse kantaa kuitenkin keston,
+   * matkan ja lajin, ja ne riittävät kaikkeen mitä sivu näyttää reittiä lukuun
+   * ottamatta.
+   *
+   * Yksiköistä: API antaa keston sekunteina ja matkan metreinä. Kesto
+   * tarkistetaan silti — yli 200 000 ei ole uskottava sekuntimäärä (55 h) mutta
+   * on tavallinen millisekuntiluku, joten se tulkitaan millisekunneiksi. Matka
+   * hylätään jos se ei ole uskottava metrimäärä; väärin tulkittu matka olisi
+   * pahempi kuin puuttuva.
+   *
+   * Palauttaa null kun kestoa ei ole: ilman sitä treenistä ei voi sanoa mitään.
+   */
+  function workoutFromListing(w) {
+    if (!w || typeof w !== "object") return null;
+    var date = Number(w.startTime);
+    if (!Number.isFinite(date) || date <= 0) return null;
+
+    var rawTime = pickNumber(w, ["totalTime", "duration"]);
+    if (rawTime === null || rawTime <= 0) return null;
+    var seconds = rawTime > 200000 ? rawTime / 1000 : rawTime;
+    if (seconds > 200000) return null; // yhä absurdi: ei uskottava treeni
+
+    var metres = pickNumber(w, ["totalDistance", "distance"]);
+    if (metres === null || metres < 0 || metres > 1000000) metres = 0;
+
+    var ascent = pickNumber(w, ["totalAscent", "ascent", "elevationGain"]);
+    if (ascent === null || ascent < 0 || ascent > 100000) ascent = 0;
+
+    var sport = activityName(w.activityId);
+    var name = typeof w.description === "string" && w.description.trim()
+      ? w.description.trim()
+      : sport;
+
+    return {
+      date: date,
+      name: name,
+      distanceKm: metres / 1000,
+      durationMin: seconds / 60,
+      elevGain: ascent,
+      sport: sport,
+      points: [],
+    };
+  }
+
   function authHeaders(store) {
     if (store === undefined) store = typeof localStorage !== "undefined" ? localStorage : null;
     var key = store && store.getItem("sessionkey");
@@ -235,6 +292,7 @@
     ACTIVITY_NAMES: ACTIVITY_NAMES,
     sleep: sleep,
     activityName: activityName,
+    workoutFromListing: workoutFromListing,
     formatDate: formatDate,
     buildFilename: buildFilename,
     authHeaders: authHeaders,

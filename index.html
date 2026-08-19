@@ -10,13 +10,16 @@
 </head>
 <body>
   <main id="app">
-    <header class="hd"><span class="brand">TREENI<b>LOKI</b></span><span id="hd-meta" class="lbl"></span></header>
-    <div id="drop" class="drop">⤢ Raahaa GPX- tai vientitiedostot tähän — tai <label class="pick">valitse<input id="file" type="file" accept=".gpx,.json" multiple hidden></label></div>
-    <div class="dropbar">
-      <span id="drop-note" class="hint"></span>
-      <button id="save-compact" class="minibtn" hidden>⤓ Tallenna kevyt tiedosto</button>
-    </div>
-    <details class="help">
+    <header class="hd">
+      <span class="brand">TREENI<b>LOKI</b></span>
+      <span class="hdr"><span id="hd-meta" class="lbl"></span><button id="save-compact" class="minibtn" hidden>⤓ Tallenna kevyt tiedosto</button></span>
+    </header>
+    <!-- Tiedostojen lisäys vie koko yläreunan vain kunnes dataa on. Sen jälkeen
+         se painuu yhdeksi riviksi, joka silti ottaa raahauksen vastaan. -->
+    <details id="loader" class="loader" open>
+      <summary id="loader-summary">Lisää tai vaihda tiedostoja</summary>
+      <div id="drop" class="drop">⤢ Raahaa GPX- tai vientitiedostot tähän — tai <label class="pick">valitse<input id="file" type="file" accept=".gpx,.json" multiple hidden></label></div>
+      <details class="help">
       <summary>Mistä GPX-tiedostot? · Sports Tracker -vienti</summary>
       <ol>
         <li>Avaa <a href="export.html"><b>vientisivu</b></a> ja raahaa painike kirjanmerkkipalkkiin — tämä tehdään vain kerran.</li>
@@ -25,7 +28,11 @@
         <li><b>Raahaa GPX-tiedostot</b> yllä olevaan pudotusalueeseen.</li>
       </ol>
       <p class="hint">Kaikki tapahtuu selaimessasi — mitään ei ladata palvelimelle. Vienti käyttää olemassa olevaa Sports Tracker -sessiotasi, ei salasanaa, eikä sessiotunniste poistu selaimesta.</p>
+      </details>
     </details>
+    <!-- Ohitettujen tiedostojen viesti jää näkyviin vaikka lisäys on kutistettu:
+         hiljaisuus ei saa näyttää onnistumiselta. -->
+    <div id="drop-note" class="hint dropnote"></div>
     <div id="verdict" class="verdict"></div>
     <div id="sports" class="sports" hidden></div>
     <nav id="tabs">
@@ -41,6 +48,6 @@
     <section id="tab-periods" class="tabpanel" hidden></section>
     <section id="tab-workouts" class="tabpanel" hidden></section>
   </main>
-  <script type="module" src="app/main.mjs"></script>
+  <script type="module">import { bootstrap } from "./app/main.mjs"; bootstrap();</script>
 </body>
 </html>

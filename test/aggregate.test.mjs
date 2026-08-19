@@ -25,3 +25,26 @@ test("aggregate of empty list is zeros", () => {
   assert.equal(a.avgPace, 0);
   assert.equal(a.longestKm, 0);
 });
+
+test("a workout with no distance does not slow the average pace", () => {
+  // Salitreeni on 45 minuuttia ilman kilometrejä. Jos sen minuutit jaettaisiin
+  // juoksun kilometreillä, keskitahti hidastuisi ilman että yksikään lenkki
+  // muuttui — luku olisi väärä eikä sitä huomaisi mistään.
+  const run = { distanceKm: 10, durationMin: 60, elevGain: 0 };
+  const gym = { distanceKm: 0, durationMin: 45, elevGain: 0 };
+
+  const alone = aggregate([run]);
+  const together = aggregate([run, gym]);
+  assert.equal(together.avgPace, alone.avgPace, "6:00/km stays 6:00/km");
+
+  // Kokonaisajassa salitreeni on silti mukana: se on tehtyä työtä.
+  assert.equal(together.totalMin, 105);
+  assert.equal(together.totalKm, 10);
+  assert.equal(together.count, 2);
+});
+
+test("a history with no distance at all reports no pace rather than infinity", () => {
+  const only = aggregate([{ distanceKm: 0, durationMin: 45, elevGain: 0 }]);
+  assert.equal(only.avgPace, 0);
+  assert.equal(only.totalMin, 45);
+});

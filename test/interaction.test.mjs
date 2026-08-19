@@ -11,10 +11,12 @@ import { installAppDom } from "./helpers/dom.mjs";
 import { gpxRun, daysAgo } from "./helpers/fixtures.mjs";
 
 let dom;
+let bootstrap;
 
 before(async () => {
   dom = installAppDom();
-  await import("../app/main.mjs");
+  ({ bootstrap } = await import("../app/main.mjs"));
+  bootstrap();
 });
 
 after(() => dom.uninstall());
@@ -274,8 +276,7 @@ test("a saved file loads back with the same analysis — the round trip closes",
   // Uusi istunto: vain tallennettu tiedosto, ei yhtään GPX:ää.
   const fresh = installAppDom();
   try {
-    const mod = await import("../app/main.mjs?roundtrip");
-    void mod;
+    bootstrap();
     fresh.byId.drop.dispatch("drop", {
       dataTransfer: { files: [{ name: "takaisin.json", text: async () => saved.text }] },
     });

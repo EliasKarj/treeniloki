@@ -196,6 +196,8 @@
     var sinceSave = 0;
     function tick() { if (++sinceSave >= 25) { sinceSave = 0; persist(); } }
 
+    var noTrackKept = 0, noTrackDropped = 0;
+
     return {
       label: "yhdeksi kevyeksi tiedostoksi",
       existing: new Set(),
@@ -210,12 +212,30 @@
           var merged = {};
           for (var k in parsed) merged[k] = parsed[k];
           for (var k2 in summary) merged[k2] = summary[k2];
-          records.push(toCompactRecord(merged, w.workoutKey));
+          records.push(toCompactRecord(merged, w.workoutKey, core.activityName(w.activityId)));
         }
         done.add(w.workoutKey);
         tick();
       },
-      onNoTrack: function (w) { done.add(w.workoutKey); tick(); },
+      // Reidittömät otetaan mukaan listauksen omista kentistä. Salitreeni, uinti
+      // ja käsin lisätyt suoritukset eivät tuota GPX:ää, joten ne katosivat
+      // ennen kokonaan — vaikka ne ovat treenejä siinä missä muutkin.
+      onNoTrack: function (w) {
+        var fromList = core.workoutFromListing(w);
+        if (fromList) {
+          records.push(toCompactRecord(fromList, w.workoutKey, fromList.sport));
+          noTrackKept++;
+        } else {
+          noTrackDropped++;
+        }
+        done.add(w.workoutKey);
+        tick();
+      },
+      summary: function () {
+        if (!noTrackKept && !noTrackDropped) return "";
+        return " Reidittömiä mukana " + noTrackKept +
+          (noTrackDropped ? ", ohitettu " + noTrackDropped + " (kestoa ei tiedossa)" : "") + ".";
+      },
       finish: async function () {
         records.sort(function (a, b) { return a.d - b.d; });
         var json = JSON.stringify(buildCompactFile(records));
@@ -358,7 +378,8 @@
         status("Tallennus epäonnistui: " + e.message, "err");
         return;
       }
-      var msg = "Valmis! " + result.downloaded + " treeniä tallennettu.";
+      var msg = "Valmis! " + result.downloaded + " treeniä tallennettu." +
+        (sink.summary ? sink.summary() : "");
       if (result.httpSkipped) {
         // 401/403 koko rintamalla tarkoittaa käytännössä vanhentunutta sessiota.
         var authFail = result.httpStatuses[401] || result.httpStatuses[403];

@@ -4,6 +4,7 @@ const {
   activityName, formatDate, buildFilename, listAllWorkouts, fetchGpx, downloadAll, resumeOffset,
   authHeaders,
 } = require("./core.js");
+const core = require("./core.js");
 
 /** Console stand-in so the loop's progress output does not pollute test output. */
 const quiet = () => {
@@ -420,4 +421,82 @@ test("a workout in the no-track list costs no network call on the next run", asy
   }));
   assert.deepEqual(seen, [], "nothing at all should be re-fetched");
   assert.equal(res.skippedExisting, 3);
+});
+
+// --------------------------------------------- reidittömät treenit listauksesta
+
+test("workoutFromListing turns a track-less listing row into a workout", () => {
+  // Salitreenistä ei synny GPX:ää, joten se katosi viennistä kokonaan. Listaus
+  // itse kantaa keston ja lajin, ja ne riittävät kaikkeen paitsi reittiin.
+  const w = core.workoutFromListing({
+    workoutKey: "gym1", activityId: 14, startTime: 1700000000000,
+    totalTime: 2700, totalDistance: 0, description: "Salitreeni",
+  });
+  assert.equal(w.name, "Salitreeni");
+  assert.equal(w.durationMin, 45);
+  assert.equal(w.distanceKm, 0);
+  assert.equal(w.elevGain, 0);
+  assert.equal(w.sport, "act14");
+  assert.deepEqual(w.points, [], "no track means no points, not missing points");
+});
+
+test("metres and seconds are converted, not passed through", () => {
+  const w = core.workoutFromListing({
+    activityId: 1, startTime: 1700000000000,
+    totalTime: 3600, totalDistance: 10000, totalAscent: 80,
+  });
+  assert.equal(w.distanceKm, 10);
+  assert.equal(w.durationMin, 60);
+  assert.equal(w.elevGain, 80);
+  assert.equal(w.name, "running", "with no description the sport is the name");
+});
+
+test("a duration in milliseconds is recognised rather than believed", () => {
+  // 3 600 000 sekuntia olisi 1000 tuntia. Yli 200 000 ei ole uskottava
+  // sekuntimäärä mutta on tavallinen millisekuntiluku.
+  const ms = core.workoutFromListing({ activityId: 1, startTime: 1, totalTime: 3600000 });
+  assert.equal(ms.durationMin, 60);
+  const seconds = core.workoutFromListing({ activityId: 1, startTime: 1, totalTime: 3600 });
+  assert.equal(seconds.durationMin, 60);
+});
+
+test("a row without a usable duration is refused", () => {
+  // Ilman kestoa treenistä ei voi sanoa mitään, ja nolla-arvoinen rivi
+  // vääristäisi jokaista keskiarvoa.
+  for (const row of [
+    null, undefined, {}, "ei olio",
+    { activityId: 1, startTime: 1700000000000 },
+    { activityId: 1, startTime: 1700000000000, totalTime: 0 },
+    { activityId: 1, startTime: 1700000000000, totalTime: -5 },
+    { activityId: 1, startTime: 1700000000000, totalTime: "eiluku" },
+    { activityId: 1, startTime: 0, totalTime: 600 },
+    { activityId: 1, totalTime: 600 },
+  ]) {
+    assert.equal(core.workoutFromListing(row), null, `unexpectedly accepted ${JSON.stringify(row)}`);
+  }
+});
+
+test("an implausible distance or ascent is dropped, not carried into the totals", () => {
+  const w = core.workoutFromListing({
+    activityId: 1, startTime: 1700000000000, totalTime: 1800,
+    totalDistance: 5e9, totalAscent: -12,
+  });
+  assert.equal(w.distanceKm, 0, "a nonsense distance must not become 5 million km");
+  assert.equal(w.elevGain, 0);
+});
+
+test("a blank description falls back to the sport rather than an empty name", () => {
+  const w = core.workoutFromListing({
+    activityId: 1, startTime: 1700000000000, totalTime: 1800, description: "   ",
+  });
+  assert.equal(w.name, "running");
+});
+
+test("alternative field names are accepted where the API uses them", () => {
+  const w = core.workoutFromListing({
+    activityId: 1, startTime: 1700000000000, duration: 1800, distance: 4000, ascent: 25,
+  });
+  assert.equal(w.durationMin, 30);
+  assert.equal(w.distanceKm, 4);
+  assert.equal(w.elevGain, 25);
 });

@@ -16,12 +16,14 @@ import { coachingTips } from "../src/analysis/coaching.mjs";
 
 let dom;
 let buildModel;
+let bootstrap;
 
 // app/main.mjs touches document at import time, so the stub must exist first —
 // hence a dynamic import rather than a static one.
 before(async () => {
   dom = installAppDom();
-  ({ buildModel } = await import("../app/main.mjs"));
+  ({ buildModel, bootstrap } = await import("../app/main.mjs"));
+  bootstrap();
 });
 
 after(() => dom.uninstall());

@@ -60,6 +60,7 @@ export class FakeElement {
     this.style = {};
     this.dataset = {};
     this.hidden = false;
+    this.open = false; // <details>: kiinni, kuten attribuutiton elementti selaimessa
     this.width = 0;
     this.height = 0;
     this.classList = new FakeClassList(this);
@@ -122,7 +123,7 @@ export class FakeElement {
  */
 export function installAppDom() {
   const ids = [
-    "app", "hd-meta", "drop", "drop-note", "save-compact", "file", "verdict", "sports", "tabs",
+    "app", "hd-meta", "loader", "drop", "drop-note", "save-compact", "file", "verdict", "sports", "tabs",
     "tab-overview", "tab-progress", "tab-health", "tab-periods", "tab-workouts",
   ];
   // The id must be set on the element itself: setTab() picks the visible panel

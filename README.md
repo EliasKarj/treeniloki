@@ -115,7 +115,7 @@ GPS-reittiä olevat treenit (käsin lisätyt, sisäjuoksut) ohitetaan.
 
 ### Ei tarvitse valita: molemmat samalla vaivalla
 
-Kun treenit on ladattu analyysisivulle, pudotusalueen alle ilmestyy painike
+Kun treenit on ladattu analyysisivulle, sivun yläreunaan ilmestyy painike
 **⤓ Tallenna kevyt tiedosto**. Se kirjoittaa ladatuista treeneistä saman `.json`-tiedoston
 ilman että vientiä tarvitsee ajaa uudelleen Sports Trackeria vasten.
 
@@ -231,6 +231,14 @@ GPX:t ilmestyvät kansioon `./gpx-export`. Valitsimet: `--out <kansio>`, `--limi
 ## Mitä sivu näyttää
 
 Kaikki alla oleva lasketaan pudottamistasi GPX-tiedostoista. Mitään ei lähetetä minnekään.
+
+Tiedostojen lisäysalue vie tyhjällä sivulla koko yläreunan, mutta **kutistuu yhdeksi riviksi
+heti kun treenejä on ladattu** — rivi ottaa raahauksen vastaan siinä missä koko alue, ja
+aukeaa klikkaamalla. Ohitettujen tiedostojen viesti jää näkyviin kutistuksesta huolimatta.
+
+> **▸ Miksi se kutistuu:** tyhjällä sivulla pudotusalue on ainoa asia jolla on merkitystä.
+> Datan jälkeen se on pelkkää tilaa, joka työntää tulokset alaspäin — eli juuri sen mitä
+> tultiin katsomaan.
 
 ### Tilannearvio — palkki sivun yläreunassa
 
@@ -543,6 +551,23 @@ kevyeen muotoon, joten erittely säilyy kun historia luetaan takaisin.
 > **▸ Miksi valikko piilotetaan yhdellä lajilla:** valinta, jossa on yksi vaihtoehto,
 > ei ole valinta. Se veisi tilaa ja saisi lukijan etsimään merkitystä jota ei ole.
 
+**Salitreenit ja muut reidittömät suoritukset** tulevat mukaan kevyeen vientiin. Niistä ei
+synny GPX:ää, joten aiemmin ne katosivat kokonaan; nyt kesto, laji ja nimi luetaan
+Sports Trackerin omasta treenilistauksesta. **Vaatii uuden viennin** — vanhassa
+tiedostossa niitä ei ole.
+
+> **▸ Miksi ne eivät vääristä tahtia:** salitreeni on esimerkiksi 45 minuuttia ilman
+> kilometrejä. Jos sen minuutit jaettaisiin juoksun kilometreillä, keskitahti hidastuisi
+> ilman että yksikään lenkki muuttui. Keskitahti lasketaan siksi vain matkallisista
+> treeneistä. Kokonaisajassa ne ovat mukana: se on tehtyä työtä.
+>
+> **▸ Mitä listauksesta luetaan ja mitä siinä oletetaan:** kesto, matka, nousu ja laji.
+> API antaa keston sekunteina ja matkan metreinä, mutta kesto tarkistetaan silti —
+> yli 200 000 ei ole uskottava sekuntimäärä (55 h) mutta on tavallinen millisekuntiluku,
+> joten se tulkitaan millisekunneiksi. Epäuskottava matka tai nousu hylätään nollaksi
+> ennemmin kuin päästetään summiin. Ilman kestoa treeni ohitetaan ja ohitusten määrä
+> kerrotaan viennin lopussa.
+
 ### Välilehti: Kaudet
 
 Kolme taulukkoa. **Lajit** ensin — matka, lenkit, aika, nousu, tahti ja osuus
@@ -705,7 +730,7 @@ Testit vaativat **Node.js 22+**. Riippuvuuksia ei tarvitse asentaa — kaikki k�
 sisäänrakennettua `node:test`-kirjastoa.
 
 ```bash
-npm test              # koko testisarja, 330 testiä
+npm test              # koko testisarja, 346 testiä
 npm run test:watch    # ajaa uudelleen kun tiedostot muuttuvat
 npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 ```
@@ -716,21 +741,22 @@ npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 |---------------|-------|---------|
 | `test/*.test.mjs` (13 kpl) | Analyysimoduulit yksitellen | 58 |
 | `test/edges.test.mjs` | Raja-arvot — jokainen kynnys molemmilta puolilta | 38 |
-| `tools/core.test.js` | Jaettu vientiydin: uudelleenyritys, jatkaminen, reidittömien muisti | 38 |
+| `tools/core.test.js` | Jaettu vientiydin: uudelleenyritys, jatkaminen, reidittömät listauksesta | 45 |
 | `test/render.test.mjs` | `app/render/*` — kortit, ennätykset, kaudet, lajit, kaavioiden lukema | 47 |
 | `tools/export-cli.test.mjs` | Node-CLI: argumentit, levylle kirjoitus, jatkaminen | 24 |
 | `test/compact.test.mjs` | Kevyt muoto: riittävyys GPX:ään verrattuna, tallennus, kelvoton data | 21 |
 | `test/periods.test.mjs` | Vuosi- ja kuukausiyhteenvedot, ennätykset, viikkoputket | 19 |
 | `test/interaction.test.mjs` | Pudotus, välilehdet, tavoite, kevyen tallennus, vioittuneet | 17 |
+| `test/loader.test.mjs` | Lisäysalueen kutistuminen ja raahaus kutistettuun riviin | 5 |
 | `test/zip.test.mjs` | Oma zip-kirjoitin: keskushakemisto, CRC, UTF-8, zip32:n rajat | 8 |
 | `test/sports.test.mjs` | Lajien erittely, nimeäminen, säilyminen kevyessä muodossa | 12 |
 | `test/sportfilter.test.mjs` | Lajivalikko: ilmestyminen, rajaus, paluu kaikkiin | 6 |
 | `test/hostile.test.mjs` | Vihamielinen ja vioittunut GPX: XSS, XXE, ReDoS, NaN, kaatumiset | 15 |
-| `test/assets.test.mjs` | Sivujen eheys, moduuliverkko, kirjanmerkin liitettävyys | 14 |
+| `test/assets.test.mjs` | Sivujen eheys, moduuliverkko, kirjanmerkin liitettävyys | 16 |
 | `test/pipeline.test.mjs` | Koko putki GPX-tekstistä valmiiseen malliin | 13 |
-| | **Yhteensä** | **330** |
+| | **Yhteensä** | **346** |
 
-Kattavuus lähdekoodista: **rivit 96 %, haaraumat 90 %, funktiot 91 %**. Kattamatta jää
+Kattavuus lähdekoodista: **rivit 99 %, haaraumat 94 %, funktiot 98 %**. Kattamatta jää
 lähinnä `app/main.mjs`:n selainliima — tiedoston lataus levylle ja välilehtien vaihto —
 sekä `export-cli.mjs`:n prosessitason kuori, jotka molemmat vaativat oikean ympäristön.
 

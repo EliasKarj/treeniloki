@@ -25,6 +25,7 @@ let goal = "endurance";
 let tab = "overview";
 let sport = null; // null = kaikki lajit
 let currentModel = null;
+let saveButton = null;
 
 function buildModel(ws) {
   const blocks = splitBlocks(ws);
@@ -94,11 +95,10 @@ async function addFiles(fileList) {
     }
   }
   workouts.sort((a, b) => a.date - b.date);
-  // Uusi tiedosto voi tuoda lajin jota ei ennen ollut, joten suodatin voi
-  // osoittaa lajiin joka ei enää ole valittavissa vain jos se katosi — ei voi.
   update();
   reportRejected(rejected);
   saveButton.hidden = workouts.length === 0;
+  collapseLoader();
 }
 
 /**
@@ -123,6 +123,21 @@ function saveCompact() {
   // osoite tuottaa siellä tyhjän tiedoston. Selain siivoaa osoitteen joka
   // tapauksessa sivun sulkeutuessa.
   setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+/**
+ * Kutista tiedostojen lisäys kun treenejä on ladattu.
+ *
+ * Tyhjällä sivulla pudotusalue on tärkein asia näkyvissä; datan jälkeen se on
+ * vain tilaa, joka työntää tulokset alaspäin. Raahaus toimii silti kutistettuun
+ * riviin, joten toiminto ei katoa vaikka se pienenee.
+ */
+function collapseLoader() {
+  const loader = document.getElementById("loader");
+  if (!loader) return;
+  const hasData = workouts.length > 0;
+  loader.classList.toggle("has-data", hasData);
+  if (hasData) loader.open = false;
 }
 
 /** Name the skipped files, so silence never looks like success. */
@@ -194,15 +209,44 @@ function setTab(id) {
   for (const p of document.querySelectorAll(".tabpanel")) p.hidden = p.id !== `tab-${id}`;
 }
 
-const saveButton = document.getElementById("save-compact");
-saveButton.addEventListener("click", saveCompact);
+/**
+ * Kytke sovellus sivuun. index.html kutsuu tätä; ilman kutsua moduulin
+ * lataaminen ei koske DOMiin lainkaan.
+ *
+ * Aiemmin kytkentä tapahtui moduulin latautuessa. Se toimi selaimessa mutta
+ * pakotti testit lataamaan moduulin uudelleen jokaista tuoretta DOMia varten
+ * (`main.mjs?jotain`), ja kattavuusraportti laskee jokaisen kyselymerkkijonon
+ * omaksi skriptikseen — main.mjs näytti puoliksi testaamattomalta vaikka ei
+ * ollut. Nyt tuonti on kertaluontoinen ja tila nollataan tästä.
+ */
+export function bootstrap() {
+  workouts = [];
+  goal = "endurance";
+  tab = "overview";
+  sport = null;
+  currentModel = null;
 
-const drop = document.getElementById("drop");
-drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
-drop.addEventListener("dragleave", () => drop.classList.remove("over"));
-drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); addFiles(e.dataTransfer.files); });
-document.getElementById("file").addEventListener("change", (e) => addFiles(e.target.files));
+  saveButton = document.getElementById("save-compact");
+  saveButton.addEventListener("click", saveCompact);
 
-for (const b of document.querySelectorAll("#tabs .tab")) b.addEventListener("click", () => setTab(b.dataset.tab));
+  // Raahaus otetaan vastaan sekä pudotusalueella että sen ympäröivällä rivillä,
+  // jotta se toimii myös silloin kun lisäys on kutistettu yhdeksi riviksi.
+  for (const id of ["drop", "loader"]) {
+    const zone = document.getElementById(id);
+    if (!zone) continue;
+    zone.addEventListener("dragover", (e) => { e.preventDefault(); zone.classList.add("over"); });
+    zone.addEventListener("dragleave", () => zone.classList.remove("over"));
+    zone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      zone.classList.remove("over");
+      addFiles(e.dataTransfer.files);
+    });
+  }
+  document.getElementById("file").addEventListener("change", (e) => addFiles(e.target.files));
+
+  for (const b of document.querySelectorAll("#tabs .tab")) {
+    b.addEventListener("click", () => setTab(b.dataset.tab));
+  }
+}
 
 export { buildModel };

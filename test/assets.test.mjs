@@ -26,10 +26,20 @@ test("every local href and src in index.html exists on disk", async () => {
   }
 });
 
-test("index.html loads the app as an ES module", async () => {
+test("index.html loads the app as an ES module and starts it", async () => {
   const html = await read("index.html");
   // Without type="module" the imports in main.mjs are a syntax error in the browser.
-  assert.match(html, /<script\s+type="module"\s+src="app\/main\.mjs"><\/script>/);
+  assert.match(html, /<script type="module">/);
+  // main.mjs ei enää kytke itseään latautuessaan, joten ilman tätä kutsua sivu
+  // näyttäisi oikealta eikä reagoisi mihinkään.
+  assert.match(html, /import \{ bootstrap \} from "\.\/app\/main\.mjs"; bootstrap\(\);/);
+
+  const main = await read("app/main.mjs");
+  assert.match(main, /export function bootstrap\(\)/);
+  // Kytkentä kuuluu bootstrapin sisään: moduulitason kutsu palauttaisi
+  // sivuvaikutukset tuontiin, ja testit joutuisivat taas lataamaan moduulin
+  // uudelleen jokaista tuoretta DOMia varten.
+  assert.doesNotMatch(main, /^document\.getElementById/m);
 });
 
 test("index.html declares every element main.mjs looks up", async () => {
@@ -49,6 +59,30 @@ test("the save-compact button starts hidden in the markup", async () => {
   const button = html.match(/<button[^>]*id="save-compact"[^>]*>/);
   assert.ok(button, "expected a save-compact button");
   assert.match(button[0], /\bhidden\b/, "it must start hidden");
+});
+
+test("the file loader starts open, since an empty page has nothing else to offer", async () => {
+  const html = await read("index.html");
+  const loader = html.match(/<details[^>]*id="loader"[^>]*>/);
+  assert.ok(loader, "expected a collapsible loader");
+  assert.match(loader[0], /\bopen\b/, "it must start expanded on a fresh page");
+  // main.mjs kutistaa sen vasta kun treenejä on ladattu.
+  const main = await read("app/main.mjs");
+  assert.match(main, /loader\.open = false/);
+});
+
+test("the skipped-files note lives outside the collapsible area", async () => {
+  // Kutistetun paneelin sisällä se olisi näkymätön, ja hiljaisuus näyttäisi
+  // onnistumiselta juuri silloin kun jotain jäi lataamatta.
+  const html = await read("index.html");
+  const loaderStart = html.indexOf('id="loader"');
+  const loaderEnd = html.indexOf('id="verdict"');
+  const note = html.indexOf('id="drop-note"');
+  assert.ok(note > -1, "expected a drop note");
+  assert.ok(note > loaderStart, "sanity: the note comes after the loader opens");
+  assert.ok(note < loaderEnd, "sanity: and before the verdict");
+  const inside = html.slice(loaderStart, note);
+  assert.ok(inside.includes("</details>"), "the loader must be closed before the note");
 });
 
 test("index.html provides the tab and panel structure main.mjs queries", async () => {
