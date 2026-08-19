@@ -229,6 +229,26 @@ test("saving turns loaded GPX workouts into one compact file", async () => {
   assert.ok(mine.every((w) => w.hr && Object.keys(w.hr).length), "heart rate must survive as a histogram");
 });
 
+test("the download's blob URL outlives the click", async () => {
+  // Chrome aloittaa latauksen synkronisesti ja selviää vaikka osoite
+  // vapautettaisiin heti; Safari lukee blobin vasta kun klikki on käsitelty,
+  // jolloin heti vapautettu osoite tuottaa tyhjän tiedoston. Vapautus on siksi
+  // viivästetty, ja tämä testi on se ero.
+  dom.byId.drop.dispatch("drop", { dataTransfer: { files: gpxFiles(3) } });
+  await waitFor(() => dom.byId["save-compact"].hidden === false, "the save button to appear");
+
+  dom.byId["save-compact"].dispatch("click");
+  const saved = dom.downloads[dom.downloads.length - 1];
+  assert.ok(saved.text && saved.text.length > 0, "the click must see real content");
+
+  const live = [...dom.blobText.values()];
+  assert.ok(live.includes(saved.text), "the URL must still resolve after the click");
+
+  // Selain vapauttaa sen aikanaan; stubissa se tehdään käsin.
+  dom.runPending();
+  assert.equal(dom.blobText.size, 0, "the deferred revoke must still clean up");
+});
+
 test("the saved file is far smaller than the GPX it came from", async () => {
   const now = Date.now();
   const gpx = gpxRun({ name: "Iso", start: daysAgo(1, now), km: 12, minutes: 70, hr: 145, pointCount: 400 });

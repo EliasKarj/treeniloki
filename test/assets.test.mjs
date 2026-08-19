@@ -102,7 +102,7 @@ test("the bookmarklet sources stay self-contained", async () => {
   // export.html concatenates these two into a javascript: URL. Anything they
   // pulled in at runtime would either break (no module loader in a bookmarklet)
   // or be blocked by the host page's CSP.
-  for (const file of ["tools/core.js", "tools/export-overlay.js"]) {
+  for (const file of ["tools/core.js", "tools/zip.js", "tools/export-overlay.js"]) {
     const source = await read(file);
     assert.doesNotMatch(source, /(?:^|\n)\s*import\s/, `${file} must not use import`);
     assert.doesNotMatch(source, /(?:^|\n)\s*(?:const|let|var).*\brequire\(/, `${file} must not use require`);

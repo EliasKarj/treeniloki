@@ -69,7 +69,8 @@ Seuraavilla kerroilla riittää kohta 2 uusien treenien hakemiseen ja kohta 3.
 | Kaaviot jäävät tyhjiksi | Dataa on liian vähän. Osa laskuista vaatii ≥ 3 treeniä, VO₂max ≥ 3 km:n lenkkejä. |
 | Sykealueet puuttuvat | GPX-tiedostoissa ei ole sykedataa. Kaikki muu toimii silti. |
 | Kirjanmerkki ei tee mitään | Et ole kirjautuneena sports-tracker.comiin, tai olet väärällä sivustolla. |
-| Vienti tarjoaa zip-pakettia | Valitsit GPX-muodon selaimessa jossa ei ole kansioon kirjoitusta. Valitse *Kevyt*, tai käytä Chromea/Edgeä. |
+| Vienti tarjoaa zip-pakettia | Valitsit GPX-muodon selaimessa jossa ei ole kansioon kirjoitusta. Se toimii, mutta paketti on iso. Valitse *Kevyt*, tai käytä Chromea/Edgeä. |
+| Ladattu tiedosto on tyhjä | Vanha vika: latauksen blob-osoite vapautettiin liian aikaisin ja Safari ehti lukea sen jo tyhjänä. Korjattu — lataa sivu uudelleen. |
 
 ---
 
@@ -164,21 +165,30 @@ uudelleen ja valitse sama kansio. Jo tallennetut ohitetaan automaattisesti.
 > injektoitaisiin kolmannen osapuolen koodia. Itsenäinen kirjanmerkki (36 kt) välttää molemmat.
 >
 > **▸ Miksi suoraan kansioon:** File System Access API kirjoittaa jokaisen GPX:n heti levylle,
-> jolloin muistinkulutus ei riipu treenien määrästä. Vanha zip-tapa keräsi kaikki muistiin:
-> mitattuna 200 treeniä → 46 MB, 400 → 88 MB, 800 → 173 MB, eli tuhansilla treeneillä lähes
-> gigatavu. Sivutuotteena jatkaminen muuttui ilmaiseksi — valmis tiedosto kansiossa *on* tieto
-> siitä mikä on tehty.
+> jolloin muistinkulutus ei riipu treenien määrästä. Alkuperäinen zip-tapa keräsi kaikki
+> muistiin: mitattuna 200 treeniä → 46 MB, 400 → 88 MB, 800 → 173 MB, eli tuhansilla
+> treeneillä lähes gigatavu. Sivutuotteena jatkaminen muuttui ilmaiseksi — valmis tiedosto
+> kansiossa *on* tieto siitä mikä on tehty.
+>
+> **▸ Miksi zip kirjoitetaan itse eikä kirjastolla:** zip-polku haki ennen JSZipin CDN:stä.
+> Kirjanmerkki ajetaan sports-tracker.comin omassa kontekstissa, jonka CSP voi estää vieraan
+> skriptin — ja silloin vienti epäonnistui *hiljaa*. `tools/zip.js` on noin 170 riviä ja
+> kirjoittaa pakkaamattoman zipin ilman riippuvuuksia. Samalla jokainen GPX suljetaan heti
+> omaksi Blobikseen, joten JS-keossa on vain keskushakemisto (~60 tavua per tiedosto) eikä
+> koko sisältö. Pakkausta ei ole: deflate vaatisi juuri sen kirjaston josta haluttiin eroon.
 
 ### Selaintuki ja puhelin
 
 | Selain | Kevyt muoto | GPX-muoto |
 |--------|-------------|-----------|
 | Chrome, Edge | toimii | suoraan kansioon, jatkaminen automaattinen |
-| **Firefox, Safari** | **toimii, suositus** | zip-paketti — raskas tuhansilla treeneillä |
+| **Firefox, Safari** | **toimii, suositus** | zip-paketti — toimii, mutta iso tiedosto |
 
-Firefoxissa ja Safarissa ei ole kansioon kirjoitusta, joten GPX-vienti joutuu keräämään
-kaiken muistiin zip-pakkausta varten. Kevyt muoto välttää sen kokonaan: muistissa on vain
-noin 0,5 kt treeniltä, ja tulos on yksi pieni tiedosto. Siksi se on näissä selaimissa oletus.
+Firefoxissa ja Safarissa ei ole kansioon kirjoitusta, joten GPX-vienti kokoaa yhden
+zip-paketin. Muisti riittää — jokainen tiedosto siirtyy selaimen blob-rekisteriin heti — mutta
+paketti on noin 0,7 Mt treeniltä, eikä keskeytynyt lataus jatku mistään. Kevyt muoto välttää
+molemmat: muistissa on noin 0,5 kt treeniltä, tulos on yksi pieni tiedosto, ja keskeytynyt ajo
+jatkuu. Siksi se on näissä selaimissa oletus.
 
 **Puhelin.** Analyysisivu toimii puhelimessa sellaisenaan — ei vaakavieritystä, kaaviot
 skaalautuvat, taulukko on luettava. Kevyt tiedosto (~1,6 MB) latautuu puhelimeen ongelmitta,
@@ -668,7 +678,7 @@ Testit vaativat **Node.js 22+**. Riippuvuuksia ei tarvitse asentaa — kaikki k�
 sisäänrakennettua `node:test`-kirjastoa.
 
 ```bash
-npm test              # koko testisarja, 297 testiä
+npm test              # koko testisarja, 306 testiä
 npm run test:watch    # ajaa uudelleen kun tiedostot muuttuvat
 npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 ```
@@ -684,11 +694,12 @@ npm run test:coverage # kattavuus + kynnysarvot (kaatuu jos alle 90 %)
 | `tools/export-cli.test.mjs` | Node-CLI: argumentit, levylle kirjoitus, jatkaminen | 24 |
 | `test/compact.test.mjs` | Kevyt muoto: riittävyys GPX:ään verrattuna, tallennus, kelvoton data | 21 |
 | `test/periods.test.mjs` | Vuosi- ja kuukausiyhteenvedot, ennätykset, viikkoputket | 19 |
-| `test/interaction.test.mjs` | Pudotus, välilehdet, tavoite, kevyen tallennus, vioittuneet | 16 |
+| `test/interaction.test.mjs` | Pudotus, välilehdet, tavoite, kevyen tallennus, vioittuneet | 17 |
+| `test/zip.test.mjs` | Oma zip-kirjoitin: keskushakemisto, CRC, UTF-8, zip32:n rajat | 8 |
 | `test/hostile.test.mjs` | Vihamielinen ja vioittunut GPX: XSS, XXE, ReDoS, NaN, kaatumiset | 15 |
 | `test/assets.test.mjs` | Sivujen eheys, moduuliverkko, kirjanmerkin liitettävyys | 14 |
 | `test/pipeline.test.mjs` | Koko putki GPX-tekstistä valmiiseen malliin | 13 |
-| | **Yhteensä** | **297** |
+| | **Yhteensä** | **306** |
 
 Kattavuus lähdekoodista: **rivit 97 %, haaraumat 93 %, funktiot 91 %**. Kattamatta jää
 lähinnä `app/main.mjs`:n selainliima — tiedoston lataus levylle ja välilehtien vaihto —
@@ -755,6 +766,7 @@ test/
 export.html             Vientisivu: rakentaa kirjanmerkkipainikkeen
 tools/
   core.js                    Jaettu ydin: API-haut, uudelleenyritys, nimeäminen
+  zip.js                     Pakkaamaton zip-kirjoitin ilman riippuvuuksia
   export-overlay.js          Kirjanmerkin käyttöliittymä (selain)
   export-cli.mjs             Node-komentorivi
 .github/workflows/      CI: testit, kattavuus, julkaisu
@@ -817,7 +829,8 @@ tiedostossa `test/hostile.test.mjs`.
 - **Export-skripti** lukee vain Sports Trackerin sessiotunnisteen `localStorage`-muistista
   ajon ajaksi ja hakee ainoastaan omia treenejäsi. Mitään ei lähetetä ulkopuolelle.
 - Halutessasi voit kirjautua ulos ja takaisin sisään ajon jälkeen vaihtaaksesi sessiotunnisteen.
-- Ainoa ulkoinen lataus on JSZip-kirjasto CDN:stä zip-paketin luomiseksi export-vaiheessa.
+- **Ulkoisia latauksia ei ole.** Kirjanmerkki on itsenäinen, ja zip kirjoitetaan omalla
+  koodilla — mitään ei haeta CDN:stä sen enempää vienti- kuin analyysivaiheessakaan.
 
 ---
 

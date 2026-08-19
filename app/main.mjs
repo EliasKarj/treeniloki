@@ -114,7 +114,10 @@ function saveCompact() {
   document.body.appendChild(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(url);
+  // Safari lukee blobin vasta kun klikki on käsitelty, joten heti vapautettu
+  // osoite tuottaa siellä tyhjän tiedoston. Selain siivoaa osoitteen joka
+  // tapauksessa sivun sulkeutuessa.
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 /** Name the skipped files, so silence never looks like success. */

@@ -7,21 +7,21 @@
 // Tallennustapa parhaimmasta alkaen:
 //   1. File System Access API  → jokainen GPX kirjoitetaan heti valittuun
 //      kansioon. Vakio muistinkulutus ja automaattinen jatkaminen.
-//   2. JSZip                   → kaikki muistiin ja yksi zip (vanha tapa).
-//   3. Yksittäiset lataukset   → jos JSZipin lataus estyy (esim. CSP).
+//   2. Oma zip-kirjoitin       → jokainen GPX suljetaan heti omaksi Blobikseen
+//      ja liitetään zipiin. Selaimissa joista kansiokirjoitus puuttuu.
 //
-// Riippuu tools/core.js:stä (globaali TreenilokiCore). export.html liittää
-// nämä kaksi yhteen kirjanmerkiksi.
+// Riippuu tools/core.js:stä (TreenilokiCore) ja tools/zip.js:stä (TreenilokiZip).
+// export.html liittää nämä yhteen kirjanmerkiksi.
 (function () {
   "use strict";
 
   var core = window.TreenilokiCore;
-  if (!core) { alert("Treeniloki: ydin puuttuu — käytä export.html-sivun painiketta."); return; }
+  var zip = window.TreenilokiZip;
+  if (!core || !zip) { alert("Treeniloki: ydin puuttuu — käytä export.html-sivun painiketta."); return; }
 
   var HOST_ID = "treeniloki-export-overlay";
   if (document.getElementById(HOST_ID)) return; // jo auki
 
-  var JSZIP_CDN = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
   var cancelled = false;
 
   // ------------------------------------------------------------------ UI
@@ -140,23 +140,21 @@
     };
   }
 
+  /**
+   * Lataa blobin tiedostona.
+   *
+   * Osoitetta ei vapauteta heti klikkauksen jälkeen: Chrome aloittaa latauksen
+   * synkronisesti ja selviää siitä, mutta Safari lukee blobin vasta kun klikki
+   * on käsitelty — silloin jo vapautettu osoite tuottaa tyhjän tiedoston.
+   * Iso zip on juuri se tapaus jossa ero näkyy. Selain siivoaa osoitteen joka
+   * tapauksessa sivun sulkeutuessa, joten viive on turvallinen.
+   */
   function triggerDownload(blob, filename) {
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a");
     a.href = url; a.download = filename;
     document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
-  }
-
-  function loadJSZip() {
-    if (window.JSZip) return Promise.resolve(window.JSZip);
-    return new Promise(function (resolve, reject) {
-      var s = document.createElement("script");
-      s.src = JSZIP_CDN;
-      s.onload = function () { resolve(window.JSZip); };
-      s.onerror = function () { reject(new Error("JSZip-lataus epäonnistui")); };
-      document.head.appendChild(s);
-    });
+    setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
   }
 
   var PROGRESS_KEY = "treeniloki:vienti-kesken";
@@ -228,29 +226,36 @@
     };
   }
 
-  /** Vanha tapa: kerää muistiin, pakkaa lopuksi. Käytössä ilman File System Accessia. */
-  function memorySink() {
+  /**
+   * Zip ilman kansiovalintaa. Käytössä selaimissa joista File System Access
+   * puuttuu (Firefox, Safari).
+   *
+   * Jokainen GPX liitetään zipiin heti kun se on haettu, eikä alkuperäistä
+   * merkkijonoa pidetä tallessa. Vanha toteutus keräsi kaikki muistiin ja
+   * pakkasi vasta lopuksi, mikä tarkoitti 3436 treenillä yli kahta gigatavua
+   * JS-keossa — käytännössä välilehden kaatumista ennen kuin mitään valmistui.
+   */
+  function zipSink() {
+    var writer = zip.zipWriter();
+    var failure = null;
+
     return {
       label: "zip-tiedostoksi",
       existing: new Set(),
       knownNoTrack: 0,
       shouldSkip: null,
-      onFile: null, // core kerää files-taulukkoon
+      onFile: function (name, gpx, w) {
+        // Rajat tulevat zip32:sta. Kirjataan ensimmäinen virhe ja lopetetaan
+        // lisääminen: puolivalmis paketti olisi huonompi kuin selvä viesti.
+        if (failure) return;
+        try { writer.add(name, gpx, w && w.startTime); }
+        catch (e) { failure = e; }
+      },
       onNoTrack: null, // ilman kansiota ei ole mihin muistiinpanoa tallentaa
-      finish: async function (result) {
-        var tag = core.formatDate(Date.now());
-        try {
-          var JSZip = await loadJSZip();
-          var zip = new JSZip();
-          result.files.forEach(function (f) { zip.file(f.name, f.gpx); });
-          triggerDownload(await zip.generateAsync({ type: "blob" }), "sports-tracker-export-" + tag + ".zip");
-        } catch (e) {
-          status("Zip-pakkaus ei onnistunut — ladataan tiedostot yksitellen.", "err");
-          for (var i = 0; i < result.files.length; i++) {
-            triggerDownload(new Blob([result.files[i].gpx], { type: "application/gpx+xml" }), result.files[i].name);
-            await core.sleep(120);
-          }
-        }
+      finish: async function () {
+        if (failure) throw failure;
+        if (!writer.count()) throw new Error("Yhtään treeniä ei saatu haettua, joten zip jäisi tyhjäksi.");
+        triggerDownload(writer.finish(), "sports-tracker-export-" + core.formatDate(Date.now()) + ".zip");
       },
     };
   }
@@ -270,7 +275,7 @@
     try {
       // Kansiovalinta on tehtävä suoraan klikkauksesta, muuten selain estää sen.
       sink = format === "compact" ? compactSink()
-        : hasFsAccess ? await directorySink() : memorySink();
+        : hasFsAccess ? await directorySink() : zipSink();
     } catch (e) {
       status("Kansiota ei valittu.", "err");
       elGo.disabled = false;
@@ -392,10 +397,10 @@
     } else {
       status("GPX: alkuperäiset tiedostot sellaisenaan." +
         (hasFsAccess ? " Valitset kansion, ja jatkaminen toimii sen perusteella."
-                     : " Selaimesi ei tue kansioon kirjoitusta, joten tulee zip-paketti — tuhansilla treeneillä raskas."));
+                     : " Selaimesi ei tue kansioon kirjoitusta, joten tulee yksi zip-paketti."));
       elFoot.textContent = hasFsAccess
         ? "Tiedostot kirjoitetaan suoraan valitsemaasi kansioon."
-        : "Kevyt muoto on tässä selaimessa selvästi kevyempi vaihtoehto.";
+        : "Zip kootaan lennossa, joten muisti riittää — mutta paketti on iso (noin 0,7 Mt treeniltä) eikä lataus jatku keskeytyksen jälkeen. Kevyt muoto on puhelimessa selvästi käytännöllisempi.";
     }
   }
 

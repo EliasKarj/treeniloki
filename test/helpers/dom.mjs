@@ -139,7 +139,7 @@ export function installAppDom() {
 
   const previous = {
     document: globalThis.document, window: globalThis.window,
-    Blob: globalThis.Blob, URL: globalThis.URL,
+    Blob: globalThis.Blob, URL: globalThis.URL, setTimeout: globalThis.setTimeout,
   };
 
   // Downloads are a side effect worth asserting on, so anchor clicks are
@@ -185,11 +185,24 @@ export function installAppDom() {
   };
   globalThis.window = { devicePixelRatio: 1 };
 
+  // Pitkät ajastimet kirjataan ylös eikä ajasteta. Lataus vapauttaa blob-osoitteen
+  // vasta minuutin päästä — Safari lukee blobin vasta kun klikki on käsitelty —
+  // ja oikea ajastin pitäisi Noden tapahtumasilmukan hengissä koko sen ajan.
+  // Lyhyet menevät läpi sellaisenaan, jottei testiajuri itse jumitu.
+  const pending = [];
+  globalThis.setTimeout = (fn, ms, ...rest) => {
+    if (ms >= 1000) return pending.push(fn);
+    return previous.setTimeout(fn, ms, ...rest);
+  };
+  /** Aja kirjatut viivästetyt tehtävät, kuten selain tekisi ajan kuluttua. */
+  const runPending = () => { while (pending.length) pending.shift()(); };
+
   const uninstall = () => {
     globalThis.document = previous.document;
     globalThis.window = previous.window;
     globalThis.Blob = previous.Blob;
     globalThis.URL = previous.URL;
+    globalThis.setTimeout = previous.setTimeout;
   };
-  return { byId, tabs, panels, downloads, uninstall };
+  return { byId, tabs, panels, downloads, blobText, pending, runPending, uninstall };
 }
